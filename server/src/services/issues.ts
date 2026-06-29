@@ -5018,8 +5018,16 @@ export function issueService(db: Db) {
         }
         // Self-correcting counter: use MAX(issue_number) + 1 if the counter
         // has drifted below the actual max, preventing identifier collisions.
+        // Also extract the trailing integer from the identifier as a fallback for
+        // rows where issue_number was not persisted (e.g. created via import or a
+        // code path that did not write issue_number — ATA-105 data-integrity guard).
         const [maxRow] = await tx
-          .select({ maxNum: sql<number>`coalesce(max(${issues.issueNumber}), 0)` })
+          .select({
+            maxNum: sql<number>`coalesce(max(greatest(
+              coalesce(${issues.issueNumber}, 0),
+              coalesce(cast((regexp_match(${issues.identifier}, '(\d+)$'))[1] as integer), 0)
+            )), 0)`,
+          })
           .from(issues)
           .where(eq(issues.companyId, companyId));
         const currentMax = maxRow?.maxNum ?? 0;

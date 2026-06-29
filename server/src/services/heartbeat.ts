@@ -11486,11 +11486,40 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
       let enqueued = 0;
       let skipped = 0;
 
+      // Batch-fetch agents that have active work so we can suppress timer wakes for
+      // truly idle agents. An idle agent has no assigned issues to act on and no
+      // active runs to resume — the assignment-wakeup path and stranded-issue
+      // reconciliation handle all necessary wakeups when real work arrives. Firing
+      // timer heartbeats for idle agents creates process-less runs that go silent and
+      // trigger watchdog evaluation issues (ATA-105).
+      const agentsWithActiveIssues = await db
+        .selectDistinct({ agentId: issues.assigneeAgentId })
+        .from(issues)
+        .where(
+          and(
+            isNull(issues.assigneeUserId),
+            sql`${issues.assigneeAgentId} is not null`,
+            inArray(issues.status, ["todo", "in_progress", "in_review", "blocked"]),
+          ),
+        )
+        .then((rows) => new Set(rows.map((r) => r.agentId as string)));
+
+      const agentsWithActiveRuns = await db
+        .selectDistinct({ agentId: heartbeatRuns.agentId })
+        .from(heartbeatRuns)
+        .where(inArray(heartbeatRuns.status, [...EXECUTION_PATH_HEARTBEAT_RUN_STATUSES]))
+        .then((rows) => new Set(rows.map((r) => r.agentId)));
+
       for (const agent of allAgents) {
         const invokability = evaluateAgentInvokability(toAgentOrgRow(agent), agentsByCompany.get(agent.companyId) ?? []);
         if (!invokability.invokable) continue;
         const policy = parseHeartbeatPolicy(agent);
         if (!policy.enabled || policy.intervalSec <= 0) continue;
+
+        // Skip timer heartbeat for agents with no active work. Such agents have no
+        // assigned issues and no active runs, so a timer wake would produce a
+        // process-less run with nothing to do (ATA-105).
+        if (!agentsWithActiveIssues.has(agent.id) && !agentsWithActiveRuns.has(agent.id)) continue;
 
         checked += 1;
         const baseline = new Date(agent.lastHeartbeatAt ?? agent.createdAt).getTime();
