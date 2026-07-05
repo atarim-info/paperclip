@@ -818,6 +818,152 @@ describeEmbeddedPostgres("companySkillService.list", () => {
     );
   });
 
+  it("treats a bundled skill as not required when a company fork of it is in the desired set", async () => {
+    const companyId = randomUUID();
+    const bundledSkillId = randomUUID();
+    const forkSkillId = randomUUID();
+    const bundledKey = "paperclipai/paperclip/second-brain";
+    const forkKey = `company/${companyId}/second-brain-2`;
+    const bundledDir = await fs.mkdtemp(path.join(os.tmpdir(), "paperclip-bundled-brain-"));
+    const forkDir = await fs.mkdtemp(path.join(os.tmpdir(), "paperclip-fork-brain-"));
+    cleanupDirs.add(bundledDir);
+    cleanupDirs.add(forkDir);
+    await fs.writeFile(path.join(bundledDir, "SKILL.md"), "# Second Brain\n", "utf8");
+    await fs.writeFile(path.join(forkDir, "SKILL.md"), "# Second Brain 2\n", "utf8");
+
+    await db.insert(companies).values({
+      id: companyId,
+      name: "Paperclip",
+      issuePrefix: `T${companyId.replace(/-/g, "").slice(0, 6).toUpperCase()}`,
+      requireBoardApprovalForNewAgents: false,
+    });
+    await db.insert(companySkills).values({
+      id: bundledSkillId,
+      companyId,
+      key: bundledKey,
+      slug: "second-brain",
+      name: "Second Brain",
+      description: null,
+      markdown: "# Second Brain\n",
+      sourceType: "local_path",
+      sourceLocator: bundledDir,
+      trustLevel: "markdown_only",
+      compatibility: "compatible",
+      fileInventory: [{ path: "SKILL.md", kind: "skill" }],
+      metadata: { sourceKind: "paperclip_bundled" },
+    });
+    await db.insert(companySkills).values({
+      id: forkSkillId,
+      companyId,
+      key: forkKey,
+      slug: "second-brain-2",
+      name: "Second Brain 2",
+      description: null,
+      markdown: "# Second Brain 2\n",
+      sourceType: "local_path",
+      sourceLocator: forkDir,
+      trustLevel: "markdown_only",
+      compatibility: "compatible",
+      fileInventory: [{ path: "SKILL.md", kind: "skill" }],
+      forkedFromSkillId: bundledSkillId,
+      forkedFromCompanyId: companyId,
+      metadata: { sourceKind: "managed_local", forkedFromSkillId: bundledSkillId },
+    });
+
+    const defaultEntries = await svc.listRuntimeSkillEntries(companyId, { materializeMissing: false });
+    expect(defaultEntries.find((entry) => entry.key === bundledKey)).toMatchObject({
+      required: true,
+      requiredReason: expect.stringContaining("always available"),
+    });
+
+    const withoutFork = await svc.listRuntimeSkillEntries(companyId, {
+      materializeMissing: false,
+      desiredSkillKeys: [bundledKey],
+    });
+    expect(withoutFork.find((entry) => entry.key === bundledKey)).toMatchObject({ required: true });
+
+    const withFork = await svc.listRuntimeSkillEntries(companyId, {
+      materializeMissing: false,
+      desiredSkillKeys: [forkKey],
+    });
+    expect(withFork.find((entry) => entry.key === bundledKey)).toMatchObject({
+      required: false,
+      requiredReason: null,
+    });
+    expect(withFork.find((entry) => entry.key === forkKey)).toMatchObject({ required: false });
+  });
+
+  it("supersedes a bundled skill through a chain of forks in the desired set", async () => {
+    const companyId = randomUUID();
+    const bundledSkillId = randomUUID();
+    const midForkSkillId = randomUUID();
+    const leafForkSkillId = randomUUID();
+    const bundledKey = "paperclipai/paperclip/second-brain";
+    const leafForkKey = `company/${companyId}/second-brain-3`;
+    const skillDirs = await Promise.all([
+      fs.mkdtemp(path.join(os.tmpdir(), "paperclip-chain-bundled-")),
+      fs.mkdtemp(path.join(os.tmpdir(), "paperclip-chain-mid-")),
+      fs.mkdtemp(path.join(os.tmpdir(), "paperclip-chain-leaf-")),
+    ]);
+    for (const dir of skillDirs) {
+      cleanupDirs.add(dir);
+      await fs.writeFile(path.join(dir, "SKILL.md"), "# Chain Skill\n", "utf8");
+    }
+
+    await db.insert(companies).values({
+      id: companyId,
+      name: "Paperclip",
+      issuePrefix: `T${companyId.replace(/-/g, "").slice(0, 6).toUpperCase()}`,
+      requireBoardApprovalForNewAgents: false,
+    });
+    const baseRow = {
+      companyId,
+      description: null,
+      markdown: "# Chain Skill\n",
+      sourceType: "local_path" as const,
+      trustLevel: "markdown_only" as const,
+      compatibility: "compatible" as const,
+      fileInventory: [{ path: "SKILL.md", kind: "skill" }],
+    };
+    await db.insert(companySkills).values({
+      ...baseRow,
+      id: bundledSkillId,
+      key: bundledKey,
+      slug: "second-brain",
+      name: "Second Brain",
+      sourceLocator: skillDirs[0]!,
+      metadata: { sourceKind: "paperclip_bundled" },
+    });
+    await db.insert(companySkills).values({
+      ...baseRow,
+      id: midForkSkillId,
+      key: `company/${companyId}/second-brain-2`,
+      slug: "second-brain-2",
+      name: "Second Brain 2",
+      sourceLocator: skillDirs[1]!,
+      forkedFromSkillId: bundledSkillId,
+      forkedFromCompanyId: companyId,
+      metadata: { sourceKind: "managed_local" },
+    });
+    await db.insert(companySkills).values({
+      ...baseRow,
+      id: leafForkSkillId,
+      key: leafForkKey,
+      slug: "second-brain-3",
+      name: "Second Brain 3",
+      sourceLocator: skillDirs[2]!,
+      forkedFromSkillId: midForkSkillId,
+      forkedFromCompanyId: companyId,
+      metadata: { sourceKind: "managed_local" },
+    });
+
+    const entries = await svc.listRuntimeSkillEntries(companyId, {
+      materializeMissing: false,
+      desiredSkillKeys: [leafForkKey],
+    });
+    expect(entries.find((entry) => entry.key === bundledKey)).toMatchObject({ required: false });
+  });
+
   it("falls back to stored markdown when reading SKILL.md from a missing local source", async () => {
     const companyId = randomUUID();
     const skillId = randomUUID();

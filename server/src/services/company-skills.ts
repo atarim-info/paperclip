@@ -276,6 +276,7 @@ export type ProjectSkillScanTarget = {
 type RuntimeSkillEntryOptions = {
   materializeMissing?: boolean;
   versionSelections?: Map<string, string | null>;
+  desiredSkillKeys?: Iterable<string>;
 };
 
 type SkillActor = {
@@ -1543,6 +1544,28 @@ function toCompanySkillComment(row: CompanySkillCommentRow): CompanySkillComment
 
 function getSkillMeta(skill: Pick<CompanySkill, "metadata">): SkillSourceMeta {
   return isPlainRecord(skill.metadata) ? skill.metadata as SkillSourceMeta : {};
+}
+
+// A desired fork stands in for its source skill (and the source's own fork
+// ancestors), so a superseded bundled skill is no longer force-required.
+function collectForkSupersededSkillIds(
+  skills: Array<Pick<CompanySkill, "id" | "key" | "forkedFromSkillId">>,
+  desiredSkillKeys: Set<string>,
+): Set<string> {
+  const superseded = new Set<string>();
+  if (desiredSkillKeys.size === 0) return superseded;
+  const skillsById = new Map(skills.map((skill) => [skill.id, skill]));
+  for (const skill of skills) {
+    if (!desiredSkillKeys.has(skill.key)) continue;
+    const seen = new Set<string>();
+    let ancestorId = skill.forkedFromSkillId;
+    while (ancestorId && !seen.has(ancestorId)) {
+      seen.add(ancestorId);
+      superseded.add(ancestorId);
+      ancestorId = skillsById.get(ancestorId)?.forkedFromSkillId ?? null;
+    }
+  }
+  return superseded;
 }
 
 function resolveCatalogSkillIfPresent(reference: string): CatalogSkill | null {
@@ -4247,6 +4270,10 @@ export function companySkillService(db: Db) {
     options: RuntimeSkillEntryOptions = {},
   ): Promise<PaperclipSkillEntry[]> {
     const skills = await listFull(companyId);
+    const supersededSkillIds = collectForkSupersededSkillIds(
+      skills,
+      new Set(options.desiredSkillKeys ?? []),
+    );
 
     const out: PaperclipSkillEntry[] = [];
     for (const skill of skills) {
@@ -4254,7 +4281,7 @@ export function companySkillService(db: Db) {
       const sourceResolution = await resolveRuntimeSkillSource(companyId, skill, options);
       if (!sourceResolution) continue;
 
-      const required = sourceKind === "paperclip_bundled";
+      const required = sourceKind === "paperclip_bundled" && !supersededSkillIds.has(skill.id);
       out.push({
         key: skill.key,
         runtimeName: buildSkillRuntimeName(skill.key, skill.slug),

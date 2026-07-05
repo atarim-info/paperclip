@@ -534,6 +534,59 @@ describe.sequential("agent skill routes", () => {
     );
   });
 
+  it("does not force-reinject a bundled skill superseded by a desired fork during sync", async () => {
+    mockAgentService.getById.mockResolvedValue(makeAgent("claude_local"));
+    const bundledKey = "paperclipai/paperclip/second-brain";
+    const forkKey = "company/company-1/second-brain-2";
+    mockCompanySkillService.resolveRequestedSkillEntries.mockImplementation(
+      async (_companyId: string, requested: Array<{ key: string; versionId?: string | null }>) =>
+        requested.map((entry) => ({ key: entry.key, versionId: entry.versionId ?? null })),
+    );
+    mockCompanySkillService.listRuntimeSkillEntries.mockImplementation(
+      async (_companyId: string, options?: { desiredSkillKeys?: Iterable<string> }) => {
+        const superseded = new Set(options?.desiredSkillKeys ?? []).has(forkKey);
+        return [
+          {
+            key: bundledKey,
+            runtimeName: "second-brain",
+            source: "/tmp/second-brain",
+            required: !superseded,
+            requiredReason: superseded ? null : "required",
+          },
+          {
+            key: forkKey,
+            runtimeName: "second-brain-2",
+            source: "/tmp/second-brain-2",
+            required: false,
+            requiredReason: null,
+          },
+        ];
+      },
+    );
+
+    const res = await requestApp(await createApp(), (baseUrl) => request(baseUrl)
+      .post("/api/agents/11111111-1111-4111-8111-111111111111/skills/sync?companyId=company-1")
+      .send({ desiredSkills: [forkKey] }));
+
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    expect(mockCompanySkillService.listRuntimeSkillEntries).toHaveBeenCalledWith(
+      "company-1",
+      expect.objectContaining({ desiredSkillKeys: [forkKey] }),
+    );
+    expect(mockAgentService.update).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        adapterConfig: expect.objectContaining({
+          paperclipSkillSync: expect.objectContaining({
+            desiredSkills: [forkKey],
+          }),
+        }),
+      }),
+      expect.any(Object),
+    );
+    expect(mockAdapter.syncSkills).toHaveBeenCalledWith(expect.anything(), [forkKey]);
+  });
+
   it("persists canonical desired skills when creating an agent directly", async () => {
     const res = await requestApp(await createApp(), (baseUrl) => request(baseUrl)
       .post("/api/companies/company-1/agents")

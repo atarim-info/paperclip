@@ -8304,6 +8304,7 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
     const runtimeSkillPreference = readPaperclipSkillSyncPreference(effectiveResolvedConfig);
     const runtimeSkillEntries = await companySkills.listRuntimeSkillEntries(agent.companyId, {
       versionSelections: skillVersionSelectionMap(runtimeSkillPreference.desiredSkillEntries),
+      desiredSkillKeys: runtimeSkillPreference.desiredSkills,
     });
     let runtimeConfig = {
       ...effectiveResolvedConfig,

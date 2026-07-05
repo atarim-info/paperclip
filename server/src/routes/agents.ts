@@ -1386,6 +1386,7 @@ export function agentRoutes(
       materializeMissing: options.materializeMissing
         ?? shouldMaterializeRuntimeSkillsForAdapter(adapterType),
       versionSelections: skillVersionSelectionMap(preference.desiredSkillEntries),
+      desiredSkillKeys: preference.desiredSkills,
     });
     return {
       ...config,
@@ -1416,6 +1417,7 @@ export function agentRoutes(
     const runtimeSkillEntries = await companySkills.listRuntimeSkillEntries(companyId, {
       materializeMissing: shouldMaterializeRuntimeSkillsForAdapter(adapterType),
       versionSelections: skillVersionSelectionMap(resolvedRequestedSkillEntries),
+      desiredSkillKeys: resolvedRequestedSkills,
     });
     const requiredSkills = runtimeSkillEntries
       .filter((entry) => entry.required)
@@ -1647,6 +1649,7 @@ export function agentRoutes(
       const runtimeSkillEntries = await companySkills.listRuntimeSkillEntries(agent.companyId, {
         materializeMissing: false,
         versionSelections: skillVersionSelectionMap(preference.desiredSkillEntries),
+        desiredSkillKeys: preference.desiredSkills,
       });
       const requiredSkills = runtimeSkillEntries.filter((entry) => entry.required).map((entry) => entry.key);
       const desiredSkillEntries = [
