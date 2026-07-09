@@ -1,0 +1,15 @@
+diff --git a/dist/server/execute.js b/dist/server/execute.js
+index 93cddf8243271f5fb3ab101617f9114257e41328..f299affcb63a29bad53548cbc8118babd50fdb47 100644
+--- a/dist/server/execute.js
++++ b/dist/server/execute.js
+@@ -246,8 +246,8 @@ export async function execute(ctx) {
+     const hermesCmd = cfgString(config.hermesCommand) || HERMES_CLI;
+     const model = cfgString(config.model);
+     const provider = cfgString(config.provider);
+-    const timeoutSec = cfgNumber(config.timeoutSec) || DEFAULT_TIMEOUT_SEC;
+-    const graceSec = cfgNumber(config.graceSec) || DEFAULT_GRACE_SEC;
++    const timeoutSec = cfgNumber(config.timeoutSec) ?? DEFAULT_TIMEOUT_SEC;
++    const graceSec = cfgNumber(config.graceSec) ?? DEFAULT_GRACE_SEC;
+     const toolsets = cfgString(config.toolsets) || cfgStringArray(config.enabledToolsets)?.join(",");
+     const extraArgs = cfgStringArray(config.extraArgs);
+     const persistSession = cfgBoolean(config.persistSession) !== false;

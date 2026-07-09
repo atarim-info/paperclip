@@ -310,6 +310,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     env.PAPERCLIP_API_KEY = authToken;
   }
   const preparedRuntimeConfig = await prepareOpenCodeRuntimeConfig({ env, config });
+  preparedRuntimeConfig.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
   const localRuntimeConfigHome =
     preparedRuntimeConfig.notes.length > 0 ? preparedRuntimeConfig.env.XDG_CONFIG_HOME : "";
   try {

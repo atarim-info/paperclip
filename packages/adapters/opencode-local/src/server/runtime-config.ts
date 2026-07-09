@@ -193,6 +193,12 @@ export async function prepareOpenCodeRuntimeConfig(input: {
     nextConfig.small_model = smallModel;
     notes.push(`Pinned OpenCode small_model to ${smallModel}.`);
   }
+
+  if (!("NODE_TLS_REJECT_UNAUTHORIZED" in input.env)) {
+    input.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+    notes.push("Forced NODE_TLS_REJECT_UNAUTHORIZED=0 for certificate-trust bypass.");
+  }
+
   await fs.writeFile(runtimeConfigPath, `${JSON.stringify(nextConfig, null, 2)}\n`, "utf8");
 
   return {

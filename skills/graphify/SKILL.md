@@ -27,22 +27,32 @@ Gives AI coding agents a queryable knowledge graph of the entire project — cod
 - Simple single-file edits where no cross-module context is needed
 - The task is about fixing a stale or incorrect graph output
 - The user explicitly says not to use it
-- The `graphify-out/` directory does not exist and you are not allowed to build it
+- `$GRAPHIFY_OUT/graph.json` does not exist (notify team to rebuild rather than skipping silently)
+
+## Company-Wide Shared DB
+
+All engineering agents use a **single shared graphify database** covering all company projects.
+
+```
+GRAPHIFY_OUT=/home/vladimir/.paperclip/instances/default/projects/bf21afba-af57-4c47-8e4e-3f7f1904908c/2f763afb-3b7a-4b76-bfff-f6e735c352ba/_default/graphify-out
+```
+
+Always use this absolute path. Never use a relative `graphify-out/` or a per-project local output. The DB covers all projects: `backoffice`, `infrastructure`, `utms`, and docs.
 
 ## Quick Reference
 
 ```bash
-graphify .                        # build or rebuild the full graph
-graphify . --update               # refresh only changed files (fast)
-graphify query "what connects X to Y?"
-graphify path "ComponentA" "ComponentB"
-graphify explain "ClassName"
+GRAPHIFY_OUT=/home/vladimir/.paperclip/instances/default/projects/bf21afba-af57-4c47-8e4e-3f7f1904908c/2f763afb-3b7a-4b76-bfff-f6e735c352ba/_default/graphify-out
+
+graphify query "what connects X to Y?" --graph $GRAPHIFY_OUT/graph.json
+graphify path "ComponentA" "ComponentB" --graph $GRAPHIFY_OUT/graph.json
+graphify explain "ClassName" --graph $GRAPHIFY_OUT/graph.json
 graphify export callflow-html     # Mermaid architecture page
 ```
 
-Output lives in `graphify-out/`:
+Output lives in the company-wide `graphify-out/`:
 ```
-graphify-out/
+$GRAPHIFY_OUT/
 ├── graph.html       # interactive browser view
 ├── GRAPH_REPORT.md  # key concepts, surprising connections, suggested questions
 └── graph.json       # full graph — query without re-reading files
@@ -53,16 +63,16 @@ graphify-out/
 ```
 Coding task arrives
     ↓
-[Phase 1] CHECK — does graphify-out/graph.json exist?
+[Phase 1] CHECK — does $GRAPHIFY_OUT/graph.json exist?
     ├── YES → query graph for task context
-    └── NO  → build graph first, then query
+    └── NO  → notify CTO to rebuild; proceed without graph
     ↓
 Agent receives task + graph context
     ↓
 Agent writes / edits / reviews code
     ↓
 [Phase 2] UPDATE — if files were added or significantly changed
-    └── run graphify . --update to keep graph current
+    └── run graphify from _default root to keep graph current
 ```
 
 ## Phase 1 — Pre-Task Graph Query
@@ -72,22 +82,27 @@ Before writing any code, orient yourself using the graph.
 ### Step 1 — Check graph freshness
 
 ```bash
-ls graphify-out/graph.json 2>/dev/null && echo "EXISTS" || echo "MISSING"
+GRAPHIFY_OUT=/home/vladimir/.paperclip/instances/default/projects/bf21afba-af57-4c47-8e4e-3f7f1904908c/2f763afb-3b7a-4b76-bfff-f6e735c352ba/_default/graphify-out
+ls $GRAPHIFY_OUT/graph.json 2>/dev/null && echo "EXISTS" || echo "MISSING"
 ```
 
-- **Missing** → run `graphify .` to build
-- **Exists but stale** (repo changed significantly) → run `graphify . --update`
+- **Missing** → notify team to rebuild; proceed without graph context
+- **Exists but stale** (repo changed significantly) → run full rebuild from `_default` root (see Building the Graph)
 - **Fresh** → proceed to query
 
 ### Step 2 — Choose the right query
 
+```bash
+GRAPHIFY_OUT=/home/vladimir/.paperclip/instances/default/projects/bf21afba-af57-4c47-8e4e-3f7f1904908c/2f763afb-3b7a-4b76-bfff-f6e735c352ba/_default/graphify-out
+```
+
 | Task type | Query to run |
 |-----------|-------------|
-| Understand a component | `graphify explain "ComponentName"` |
-| Trace a data flow | `graphify query "how does X flow to Y?"` |
-| Find dependencies | `graphify query "what depends on X?"` |
-| Debug a connection | `graphify path "SourceNode" "TargetNode"` |
-| General orientation | Read `graphify-out/GRAPH_REPORT.md` — God Nodes section |
+| Understand a component | `graphify explain "ComponentName" --graph $GRAPHIFY_OUT/graph.json` |
+| Trace a data flow | `graphify query "how does X flow to Y?" --graph $GRAPHIFY_OUT/graph.json` |
+| Find dependencies | `graphify query "what depends on X?" --graph $GRAPHIFY_OUT/graph.json` |
+| Debug a connection | `graphify path "SourceNode" "TargetNode" --graph $GRAPHIFY_OUT/graph.json` |
+| General orientation | Read `$GRAPHIFY_OUT/GRAPH_REPORT.md` — God Nodes section |
 
 ### Step 3 — Inject context into the coding task
 
@@ -121,32 +136,38 @@ pipx install graphifyy
 pip install graphifyy
 ```
 
-### Build
+### Build (company-wide — always run from _default root)
+
+The company DB is built by running graphify from the **company `_default` root** so all projects are covered in one pass:
 
 ```bash
-# Full build
-graphify .
+COMPANY_ROOT=/home/vladimir/.paperclip/instances/default/projects/bf21afba-af57-4c47-8e4e-3f7f1904908c/2f763afb-3b7a-4b76-bfff-f6e735c352ba/_default
+
+# Full build of all company projects
+cd $COMPANY_ROOT && graphify . --no-viz
 
 # Build with extras (if project has PDFs, office docs, SQL schemas)
 pip install "graphifyy[pdf,office,sql]"
-graphify .
-
-# Skip HTML viz for speed (CI/headless)
-graphify . --no-viz
+cd $COMPANY_ROOT && graphify .
 
 # Deep mode — more aggressive relationship extraction
-graphify . --mode deep
+cd $COMPANY_ROOT && graphify . --mode deep
 ```
+
+This writes the unified graph to `$COMPANY_ROOT/graphify-out/` covering all subprojects.
+
+A `.graphifyignore` file at `$COMPANY_ROOT` controls what gets excluded (e.g. `utms-worktrees/`, `graphify-out/`).
 
 ### Incremental update (after code changes)
 
 ```bash
-graphify . --update
+COMPANY_ROOT=/home/vladimir/.paperclip/instances/default/projects/bf21afba-af57-4c47-8e4e-3f7f1904908c/2f763afb-3b7a-4b76-bfff-f6e735c352ba/_default
+cd $COMPANY_ROOT && graphify . --update
 ```
 
 Use `--update` for routine coding tasks. Reserve full rebuild for:
 - Major refactors that deleted/renamed many files
-- First run after cloning the repo
+- First run after setting up the company DB
 - Ghost duplicate nodes (run `graphify extract . --force` to clean)
 
 ## Phase 2 — Post-Task Graph Update
@@ -157,7 +178,8 @@ After completing a coding task, update the graph if:
 - A module was deleted or renamed
 
 ```bash
-graphify . --update
+COMPANY_ROOT=/home/vladimir/.paperclip/instances/default/projects/bf21afba-af57-4c47-8e4e-3f7f1904908c/2f763afb-3b7a-4b76-bfff-f6e735c352ba/_default
+cd $COMPANY_ROOT && graphify . --update
 ```
 
 For minor edits (bug fixes, docstrings, variable renames) — skip the update.
@@ -165,19 +187,21 @@ For minor edits (bug fixes, docstrings, variable renames) — skip the update.
 ## Query Cheatsheet
 
 ```bash
+GRAPHIFY_OUT=/home/vladimir/.paperclip/instances/default/projects/bf21afba-af57-4c47-8e4e-3f7f1904908c/2f763afb-3b7a-4b76-bfff-f6e735c352ba/_default/graphify-out
+
 # Understand a specific class or function
-graphify explain "AuthMiddleware"
+graphify explain "AuthMiddleware" --graph $GRAPHIFY_OUT/graph.json
 
 # Find the shortest connection between two things
-graphify path "UserService" "DatabasePool"
+graphify path "UserService" "DatabasePool" --graph $GRAPHIFY_OUT/graph.json
 
 # Ask natural language questions about architecture
-graphify query "what connects the cache layer to the API routes?"
-graphify query "which modules import from utils?"
-graphify query "where is the rate limiter applied?"
+graphify query "what connects the cache layer to the API routes?" --graph $GRAPHIFY_OUT/graph.json
+graphify query "which modules import from utils?" --graph $GRAPHIFY_OUT/graph.json
+graphify query "where is the rate limiter applied?" --graph $GRAPHIFY_OUT/graph.json
 
 # Deep search with larger budget
-graphify query "trace the auth flow from request to token validation" --dfs --budget 2000
+graphify query "trace the auth flow from request to token validation" --dfs --budget 2000 --graph $GRAPHIFY_OUT/graph.json
 
 # Export a readable architecture page
 graphify export callflow-html
@@ -215,20 +239,25 @@ Always check confidence tags before acting on a relationship — `AMBIGUOUS` lin
 
 ## Team Setup
 
-`graphify-out/` should be committed to git so all agents start with a map:
+The company-wide DB lives at a fixed shared path — all agents read and write from the same location. No per-project `graphify-out/` directories.
 
-```bash
-# .gitignore additions
-echo "graphify-out/manifest.json" >> .gitignore
-echo "graphify-out/cost.json" >> .gitignore
+```
+GRAPHIFY_OUT=/home/vladimir/.paperclip/instances/default/projects/bf21afba-af57-4c47-8e4e-3f7f1904908c/2f763afb-3b7a-4b76-bfff-f6e735c352ba/_default/graphify-out
+```
+
+To exclude unwanted paths from the full scan, add a `.graphifyignore` at the `_default` root:
+```
+utms-worktrees/
+graphify-out/
 ```
 
 Auto-rebuild on every commit (AST only, no API cost):
 ```bash
+cd /home/vladimir/.paperclip/instances/default/projects/bf21afba-af57-4c47-8e4e-3f7f1904908c/2f763afb-3b7a-4b76-bfff-f6e735c352ba/_default
 graphify hook install
 ```
 
-This also installs a git merge driver for conflict-free `graph.json` union-merging.
+This installs a git merge driver for conflict-free `graph.json` union-merging.
 
 ## Integration with LightRAG
 

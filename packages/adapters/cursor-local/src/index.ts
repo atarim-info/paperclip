@@ -62,9 +62,9 @@ export const modelProfiles: AdapterModelProfileDefinition[] = [
   {
     key: "cheap",
     label: "Cheap",
-    description: "Use Cursor's known Codex mini model as the budget lane instead of assuming auto is cheap.",
+    description: "OpenCode DeepSeek V4 Flash Free as the budget lane instead of assuming auto is cheap.",
     adapterConfig: {
-      model: "gpt-5.1-codex-mini",
+      model: "opencode/deepseek-v4-flash-free",
     },
     source: "adapter_default",
   },
