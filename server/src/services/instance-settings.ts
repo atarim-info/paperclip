@@ -18,7 +18,7 @@ const DEFAULT_SINGLETON_KEY = "default";
 const instanceGeneralSettingsStorageSchema = instanceGeneralSettingsSchema.strip();
 const instanceExperimentalSettingsStorageSchema = instanceExperimentalSettingsSchema.strip();
 
-function normalizeGeneralSettings(raw: unknown): InstanceGeneralSettings {
+export function normalizeGeneralSettings(raw: unknown): InstanceGeneralSettings {
   const parsed = instanceGeneralSettingsStorageSchema.safeParse(raw ?? {});
   if (parsed.success) {
     return {
