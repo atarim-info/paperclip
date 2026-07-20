@@ -148,6 +148,13 @@ export function createBetterAuthInstance(db: Db, config: Config, trustedOrigins:
       requireEmailVerification: false,
       disableSignUp: config.authDisableSignUp,
     },
+    socialProviders: {
+      twitter: {
+        clientId: process.env.TWITTER_CLIENT_ID,
+        clientSecret: process.env.TWITTER_CLIENT_SECRET,
+        scope: ["users.read", "tweet.read"],
+      },
+    },
     advanced: buildBetterAuthAdvancedOptions({ disableSecureCookies }),
   };
 
