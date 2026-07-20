@@ -1,0 +1,1 @@
+{"nodes": [{"id": "pkg_github_com_paperclipai_paperclip_tools_agent_shim", "label": "github.com/paperclipai/paperclip/tools/agent-shim", "file_type": "code", "type": "package", "ecosystem": "go", "source_file": "tools/agent-shim/go.mod", "source_location": "L1"}], "edges": []}
