@@ -8,6 +8,9 @@ import { grokLocalUIAdapter } from "./grok-local";
 import { hermesGatewayUIAdapter } from "./hermes-gateway";
 import { hermesLocalUIAdapter } from "./hermes-local";
 import { openCodeLocalUIAdapter } from "./opencode-local";
+import { crushLocalUIAdapter } from "./crush-local";
+import { kilocodeLocalUIAdapter } from "./kilocode-local";
+import { mimoLocalUIAdapter } from "./mimo-local";
 import { piLocalUIAdapter } from "./pi-local";
 import { openClawGatewayUIAdapter } from "./openclaw-gateway";
 import { processUIAdapter } from "./process";
@@ -60,6 +63,9 @@ function registerBuiltInUIAdapters() {
     hermesGatewayUIAdapter,
     hermesLocalUIAdapter,
     openCodeLocalUIAdapter,
+    crushLocalUIAdapter,
+    kilocodeLocalUIAdapter,
+    mimoLocalUIAdapter,
     piLocalUIAdapter,
     cursorLocalUIAdapter,
     openClawGatewayUIAdapter,

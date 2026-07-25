@@ -8,6 +8,9 @@ import { printGrokStreamEvent } from "@paperclipai/adapter-grok-local/cli";
 import { formatStdoutEvent as printHermesGatewayStreamEvent } from "@paperclipai/hermes-paperclip-adapter/gateway/cli";
 import { printHermesStreamEvent } from "@paperclipai/hermes-paperclip-adapter/cli";
 import { printOpenCodeStreamEvent } from "@paperclipai/adapter-opencode-local/cli";
+import { printCrushStreamEvent } from "@paperclipai/adapter-crush-local/cli";
+import { printKiloStreamEvent } from "@paperclipai/adapter-kilocode-local/cli";
+import { printMimoStreamEvent } from "@paperclipai/adapter-mimo-local/cli";
 import { printPiStreamEvent } from "@paperclipai/adapter-pi-local/cli";
 import { printOpenClawGatewayStreamEvent } from "@paperclipai/adapter-openclaw-gateway/cli";
 import { processCLIAdapter } from "./process/index.js";
@@ -26,6 +29,21 @@ const codexLocalCLIAdapter: CLIAdapterModule = {
 const openCodeLocalCLIAdapter: CLIAdapterModule = {
   type: "opencode_local",
   formatStdoutEvent: printOpenCodeStreamEvent,
+};
+
+const crushLocalCLIAdapter: CLIAdapterModule = {
+  type: "crush_local",
+  formatStdoutEvent: printCrushStreamEvent,
+};
+
+const kilocodeLocalCLIAdapter: CLIAdapterModule = {
+  type: "kilocode_local",
+  formatStdoutEvent: printKiloStreamEvent,
+};
+
+const mimoLocalCLIAdapter: CLIAdapterModule = {
+  type: "mimo_local",
+  formatStdoutEvent: printMimoStreamEvent,
 };
 
 const piLocalCLIAdapter: CLIAdapterModule = {
@@ -73,6 +91,9 @@ const adaptersByType = new Map<string, CLIAdapterModule>(
     claudeLocalCLIAdapter,
     codexLocalCLIAdapter,
     openCodeLocalCLIAdapter,
+    crushLocalCLIAdapter,
+    kilocodeLocalCLIAdapter,
+    mimoLocalCLIAdapter,
     piLocalCLIAdapter,
     cursorLocalCLIAdapter,
     cursorCloudCLIAdapter,
