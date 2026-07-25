@@ -60,3 +60,6 @@ tests/release-smoke/playwright-report/
 .superpowers/
 .claude/worktrees/
 .herenow
+
+# Generated codebase knowledge graph (graphify) — do not track
+graphify-out/
