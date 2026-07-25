@@ -105,6 +105,21 @@ const adapterDisplayMap: Record<string, AdapterDisplayInfo> = {
     description: "OpenCode multi-provider harness",
     icon: OpenCodeLogoIcon,
   },
+  crush_local: {
+    label: "Crush",
+    description: "Charm Crush CLI harness",
+    icon: Terminal,
+  },
+  kilocode_local: {
+    label: "Kilo Code",
+    description: "Kilo Code CLI harness",
+    icon: Terminal,
+  },
+  mimo_local: {
+    label: "MiMo",
+    description: "MiMoCode CLI harness",
+    icon: Terminal,
+  },
   pi_local: {
     label: "Pi",
     description: "Pi harness",

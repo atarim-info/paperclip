@@ -100,6 +100,45 @@ import {
   modelProfiles as openCodeModelProfiles,
 } from "@paperclipai/adapter-opencode-local";
 import {
+  execute as crushExecute,
+  listCrushSkills,
+  syncCrushSkills,
+  testEnvironment as crushTestEnvironment,
+  sessionCodec as crushSessionCodec,
+  listCrushModels,
+} from "@paperclipai/adapter-crush-local/server";
+import {
+  agentConfigurationDoc as crushAgentConfigurationDoc,
+  models as crushModels,
+  modelProfiles as crushModelProfiles,
+} from "@paperclipai/adapter-crush-local";
+import {
+  execute as kiloExecute,
+  listKiloSkills,
+  syncKiloSkills,
+  testEnvironment as kiloTestEnvironment,
+  sessionCodec as kiloSessionCodec,
+  listKiloModels,
+} from "@paperclipai/adapter-kilocode-local/server";
+import {
+  agentConfigurationDoc as kiloAgentConfigurationDoc,
+  models as kiloModels,
+  modelProfiles as kiloModelProfiles,
+} from "@paperclipai/adapter-kilocode-local";
+import {
+  execute as mimoExecute,
+  listMimoSkills,
+  syncMimoSkills,
+  testEnvironment as mimoTestEnvironment,
+  sessionCodec as mimoSessionCodec,
+  listMimoModels,
+} from "@paperclipai/adapter-mimo-local/server";
+import {
+  agentConfigurationDoc as mimoAgentConfigurationDoc,
+  models as mimoModels,
+  modelProfiles as mimoModelProfiles,
+} from "@paperclipai/adapter-mimo-local";
+import {
   execute as openclawGatewayExecute,
   testEnvironment as openclawGatewayTestEnvironment,
 } from "@paperclipai/adapter-openclaw-gateway/server";
@@ -401,6 +440,63 @@ const openCodeLocalAdapter: ServerAdapterModule = {
   agentConfigurationDoc: openCodeAgentConfigurationDoc,
 };
 
+const crushLocalAdapter: ServerAdapterModule = {
+  type: "crush_local",
+  execute: crushExecute,
+  testEnvironment: crushTestEnvironment,
+  listSkills: listCrushSkills,
+  syncSkills: syncCrushSkills,
+  sessionCodec: crushSessionCodec,
+  models: crushModels,
+  modelProfiles: crushModelProfiles,
+  sessionManagement: getAdapterSessionManagement("crush_local") ?? undefined,
+  listModels: listCrushModels,
+  supportsLocalAgentJwt: true,
+  supportsInstructionsBundle: true,
+  instructionsPathKey: "instructionsFilePath",
+  requiresMaterializedRuntimeSkills: true,
+  getRuntimeCommandSpec: (config) => buildNpmRuntimeCommandSpec(config, "crush", "@charmland/crush"),
+  agentConfigurationDoc: crushAgentConfigurationDoc,
+};
+
+const kilocodeLocalAdapter: ServerAdapterModule = {
+  type: "kilocode_local",
+  execute: kiloExecute,
+  testEnvironment: kiloTestEnvironment,
+  listSkills: listKiloSkills,
+  syncSkills: syncKiloSkills,
+  sessionCodec: kiloSessionCodec,
+  models: kiloModels,
+  modelProfiles: kiloModelProfiles,
+  sessionManagement: getAdapterSessionManagement("kilocode_local") ?? undefined,
+  listModels: listKiloModels,
+  supportsLocalAgentJwt: true,
+  supportsInstructionsBundle: true,
+  instructionsPathKey: "instructionsFilePath",
+  requiresMaterializedRuntimeSkills: true,
+  getRuntimeCommandSpec: (config) => buildNpmRuntimeCommandSpec(config, "kilo", "@kilocode/cli"),
+  agentConfigurationDoc: kiloAgentConfigurationDoc,
+};
+
+const mimoLocalAdapter: ServerAdapterModule = {
+  type: "mimo_local",
+  execute: mimoExecute,
+  testEnvironment: mimoTestEnvironment,
+  listSkills: listMimoSkills,
+  syncSkills: syncMimoSkills,
+  sessionCodec: mimoSessionCodec,
+  models: mimoModels,
+  modelProfiles: mimoModelProfiles,
+  sessionManagement: getAdapterSessionManagement("mimo_local") ?? undefined,
+  listModels: listMimoModels,
+  supportsLocalAgentJwt: true,
+  supportsInstructionsBundle: true,
+  instructionsPathKey: "instructionsFilePath",
+  requiresMaterializedRuntimeSkills: true,
+  getRuntimeCommandSpec: (config) => buildNpmRuntimeCommandSpec(config, "mimo", "mimocode"),
+  agentConfigurationDoc: mimoAgentConfigurationDoc,
+};
+
 const piLocalAdapter: ServerAdapterModule = {
   type: "pi_local",
   execute: piExecute,
@@ -438,6 +534,9 @@ function registerBuiltInAdapters() {
     claudeLocalAdapter,
     codexLocalAdapter,
     openCodeLocalAdapter,
+    crushLocalAdapter,
+    kilocodeLocalAdapter,
+    mimoLocalAdapter,
     piLocalAdapter,
     cursorCloudAdapter,
     cursorLocalAdapter,

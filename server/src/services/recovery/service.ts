@@ -93,6 +93,9 @@ const SESSIONED_LOCAL_ADAPTERS = new Set([
   "cursor",
   "gemini_local",
   "hermes_local",
+  "crush_local",
+  "kilocode_local",
+  "mimo_local",
   "opencode_local",
   "pi_local",
 ]);
