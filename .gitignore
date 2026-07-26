@@ -66,3 +66,7 @@ tests/storybook-visual/playwright-report/
 .superpowers/
 .claude/worktrees/
 .herenow
+
+# Generated codebase knowledge graph (graphify) — do not track; keeping it out of the
+# tree also keeps it out of agent Grep/Glob scope (graph.json is ~26MB and blows context).
+graphify-out/
