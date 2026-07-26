@@ -548,21 +548,14 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
       ? ""
       : renderTemplate(promptTemplate, templateData);
     const sessionHandoffNote = asString(context.paperclipSessionHandoffMarkdown, "").trim();
-    const prompt = joinPromptSections([
-      instructionsPrefix,
-      renderedBootstrapPrompt,
-      wakePrompt,
-      sessionHandoffNote,
-      renderedPrompt,
-    ]);
-    const promptMetrics = {
-      promptChars: prompt.length,
-      instructionsChars: instructionsPrefix.length,
-      bootstrapPromptChars: renderedBootstrapPrompt.length,
-      wakePromptChars: wakePrompt.length,
-      sessionHandoffChars: sessionHandoffNote.length,
-      heartbeatPromptChars: renderedPrompt.length,
-    };
+    // The agent instructions (config.instructionsFilePath / AGENTS.md) are prepended only on
+    // FRESH runs. On a resumed session they are already present in the replayed conversation
+    // history, so re-prepending them each heartbeat just re-bills the same tokens (expensive
+    // on gateways that don't cache the prefix). The unknown-session fallback runs fresh
+    // (runAttempt(null)) and therefore still receives the instructions-included prompt.
+    const promptBodySections = [renderedBootstrapPrompt, wakePrompt, sessionHandoffNote, renderedPrompt];
+    const promptFresh = joinPromptSections([instructionsPrefix, ...promptBodySections]);
+    const promptResume = joinPromptSections(promptBodySections);
 
     // Optional diagnostic: surface OpenCode's own logs on stderr (captured into the
     // run result) so failures that OpenCode otherwise wraps as an opaque
@@ -584,6 +577,15 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
 
     const runAttempt = async (resumeSessionId: string | null) => {
       const args = buildArgs(resumeSessionId);
+      const prompt = resumeSessionId ? promptResume : promptFresh;
+      const promptMetrics = {
+        promptChars: prompt.length,
+        instructionsChars: resumeSessionId ? 0 : instructionsPrefix.length,
+        bootstrapPromptChars: renderedBootstrapPrompt.length,
+        wakePromptChars: wakePrompt.length,
+        sessionHandoffChars: sessionHandoffNote.length,
+        heartbeatPromptChars: renderedPrompt.length,
+      };
       if (onMeta) {
         await onMeta({
           adapterType: "opencode_local",
