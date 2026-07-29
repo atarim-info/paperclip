@@ -249,6 +249,30 @@ describe("prepareOpenCodeRuntimeConfig", () => {
     await prepared.cleanup();
   });
 
+  it("removes stale .jsonc files copied from the source config directory", async () => {
+    const configHome = await makeConfigHome({ permission: { read: "allow" } });
+    // Plant an invalid .jsonc file alongside the valid opencode.json
+    const configDir = path.join(configHome, "opencode");
+    await fs.writeFile(
+      path.join(configDir, "opencode.jsonc"),
+      `{ "invalid": true, "missing_comma" }`,
+      "utf8",
+    );
+
+    const prepared = await prepareOpenCodeRuntimeConfig({
+      env: { XDG_CONFIG_HOME: configHome },
+      config: {},
+    });
+    cleanupPaths.add(prepared.env.XDG_CONFIG_HOME);
+
+    const runtimeDir = path.join(prepared.env.XDG_CONFIG_HOME, "opencode");
+    const runtimeFiles = await fs.readdir(runtimeDir);
+    // .jsonc should be removed; only opencode.json remains
+    expect(runtimeFiles).toContain("opencode.json");
+    expect(runtimeFiles).not.toContain("opencode.jsonc");
+    await prepared.cleanup();
+  });
+
   it("respects explicit opt-out", async () => {
     const configHome = await makeConfigHome();
     const prepared = await prepareOpenCodeRuntimeConfig({

@@ -140,6 +140,21 @@ export async function prepareOpenCodeRuntimeConfig(input: {
     }
   }
 
+  // Remove any .jsonc files copied from the source config directory.  OpenCode
+  // validates every opencode.jsonc it discovers in XDG_CONFIG_HOME; a stale or
+  // user-edited .jsonc can fail validation even though we write a valid
+  // opencode.json.  Keeping only our plain-JSON file avoids the conflict.
+  try {
+    const copiedFiles = await fs.readdir(runtimeConfigDir);
+    for (const file of copiedFiles) {
+      if (file.endsWith(".jsonc")) {
+        await fs.rm(path.join(runtimeConfigDir, file), { force: true });
+      }
+    }
+  } catch {
+    // directory may not exist yet; ignore
+  }
+
   const existingConfig = await readJsonObject(runtimeConfigPath);
   const existingPermission = isPlainObject(existingConfig.permission)
     ? existingConfig.permission
