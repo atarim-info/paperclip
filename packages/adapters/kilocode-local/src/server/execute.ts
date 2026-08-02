@@ -91,6 +91,11 @@ export async function ensureRemoteKiloModelConfiguredAndAvailable(input: {
   timeoutSec: number;
   graceSec: number;
 }) {
+  // No model configured: defer to Kilo's own default selection, exactly as the
+  // harness TUI does. Mirrors the local ensureKiloModelConfiguredAndAvailable
+  // bypass; buildArgs omits `--model` when the model is blank.
+  if (asString(input.model, "").trim().length === 0) return;
+
   const model = requireKiloModelId(input.model);
 
   // When the caller opts into KILO_ALLOW_ALL_MODELS, Kilo accepts any

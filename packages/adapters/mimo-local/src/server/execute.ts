@@ -91,6 +91,11 @@ export async function ensureRemoteMimoModelConfiguredAndAvailable(input: {
   timeoutSec: number;
   graceSec: number;
 }) {
+  // No model configured: defer to Mimo's own default selection, exactly as the
+  // harness TUI does. Mirrors the local ensureMimoModelConfiguredAndAvailable
+  // bypass; buildArgs omits `--model` when the model is blank.
+  if (asString(input.model, "").trim().length === 0) return;
+
   const model = requireMimoModelId(input.model);
 
   // When the caller opts into MIMO_ALLOW_ALL_MODELS, Mimo accepts any

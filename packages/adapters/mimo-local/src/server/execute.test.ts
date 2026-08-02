@@ -51,12 +51,29 @@ describe("ensureRemoteMimoModelConfiguredAndAvailable", () => {
         runId: "run-3",
         executionTarget: bogusTarget,
         command: "mimo",
-        model: "",
+        model: "gpt-5.2-codex", // malformed: missing the provider prefix
         cwd: "/tmp",
         env: { MIMO_ALLOW_ALL_MODELS: "true" },
         timeoutSec: 30,
         graceSec: 5,
       }),
     ).rejects.toThrow();
+  });
+
+  it("defers to Mimo's own default when no model is configured", async () => {
+    // Unset is not malformed: `mimo run` omits --model and picks its own
+    // default, matching the harness TUI. Must not probe the (bogus) target.
+    await expect(
+      ensureRemoteMimoModelConfiguredAndAvailable({
+        runId: "run-4",
+        executionTarget: bogusTarget,
+        command: "mimo",
+        model: "",
+        cwd: "/tmp",
+        env: {},
+        timeoutSec: 30,
+        graceSec: 5,
+      }),
+    ).resolves.toBeUndefined();
   });
 });

@@ -187,6 +187,12 @@ export async function ensureKiloModelConfiguredAndAvailable(input: {
   cwd?: unknown;
   env?: unknown;
 }): Promise<AdapterModel[]> {
+  // No model configured: defer to Kilo's own default selection, exactly as the
+  // harness TUI does. `kilo run` treats `--model` as optional, and buildArgs
+  // already omits the flag when the model is blank, so there is nothing to
+  // validate or probe here. A *malformed* model is still rejected below.
+  if (asString(input.model, "").trim().length === 0) return [];
+
   const model = requireKiloModelId(input.model);
 
   // When the caller opts into KILO_ALLOW_ALL_MODELS, Kilo accepts any

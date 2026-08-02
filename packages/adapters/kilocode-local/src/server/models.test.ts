@@ -18,12 +18,6 @@ describe("kilo models", () => {
     await expect(listKiloModels()).resolves.toEqual([]);
   });
 
-  it("rejects when model is missing", async () => {
-    await expect(
-      ensureKiloModelConfiguredAndAvailable({ model: "" }),
-    ).rejects.toThrow("Kilo requires `adapterConfig.model`");
-  });
-
   it("accepts a provider/model id without running discovery", () => {
     expect(requireKiloModelId("kilo/openai/gpt-5.2-codex")).toBe("kilo/openai/gpt-5.2-codex");
   });
@@ -35,6 +29,15 @@ describe("kilo models", () => {
     expect(() => requireKiloModelId("openai/")).toThrow(
       "Kilo requires `adapterConfig.model`",
     );
+  });
+
+  it("defers to Kilo's own default when no model is configured", async () => {
+    // An unset model must NOT be an error: `kilo run` treats --model as optional
+    // and picks its own default, which is what the harness TUI does. Discovery
+    // must not run, so this resolves without any command being spawned.
+    await expect(ensureKiloModelConfiguredAndAvailable({ model: "" })).resolves.toEqual([]);
+    await expect(ensureKiloModelConfiguredAndAvailable({ model: "   " })).resolves.toEqual([]);
+    await expect(ensureKiloModelConfiguredAndAvailable({})).resolves.toEqual([]);
   });
 
   it("rejects when discovery cannot run for configured model", async () => {
