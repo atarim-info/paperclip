@@ -18,10 +18,13 @@ describe("mimo models", () => {
     await expect(listMimoModels()).resolves.toEqual([]);
   });
 
-  it("rejects when model is missing", async () => {
-    await expect(
-      ensureMimoModelConfiguredAndAvailable({ model: "" }),
-    ).rejects.toThrow("Mimo requires `adapterConfig.model`");
+  it("defers to Mimo's own default when no model is configured", async () => {
+    // An unset model must NOT be an error: `mimo run` treats --model as optional
+    // and picks its own default, which is what the harness TUI does. Discovery
+    // must not run, so this resolves without any command being spawned.
+    await expect(ensureMimoModelConfiguredAndAvailable({ model: "" })).resolves.toEqual([]);
+    await expect(ensureMimoModelConfiguredAndAvailable({ model: "   " })).resolves.toEqual([]);
+    await expect(ensureMimoModelConfiguredAndAvailable({})).resolves.toEqual([]);
   });
 
   it("accepts a provider/model id without running discovery", () => {

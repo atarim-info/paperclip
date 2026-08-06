@@ -51,12 +51,29 @@ describe("ensureRemoteKiloModelConfiguredAndAvailable", () => {
         runId: "run-3",
         executionTarget: bogusTarget,
         command: "kilo",
-        model: "",
+        model: "gpt-5.2-codex", // malformed: missing the kilo/provider prefix
         cwd: "/tmp",
         env: { KILO_ALLOW_ALL_MODELS: "true" },
         timeoutSec: 30,
         graceSec: 5,
       }),
     ).rejects.toThrow();
+  });
+
+  it("defers to Kilo's own default when no model is configured", async () => {
+    // Unset is not malformed: `kilo run` omits --model and picks its own
+    // default, matching the harness TUI. Must not probe the (bogus) target.
+    await expect(
+      ensureRemoteKiloModelConfiguredAndAvailable({
+        runId: "run-4",
+        executionTarget: bogusTarget,
+        command: "kilo",
+        model: "",
+        cwd: "/tmp",
+        env: {},
+        timeoutSec: 30,
+        graceSec: 5,
+      }),
+    ).resolves.toBeUndefined();
   });
 });
