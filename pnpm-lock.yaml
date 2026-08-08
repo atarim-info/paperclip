@@ -67,6 +67,9 @@ importers:
       '@paperclipai/adapter-cursor-local':
         specifier: workspace:*
         version: link:../packages/adapters/cursor-local
+      '@paperclipai/adapter-freebuff-local':
+        specifier: workspace:*
+        version: link:../packages/adapters/freebuff-local
       '@paperclipai/adapter-gemini-local':
         specifier: workspace:*
         version: link:../packages/adapters/gemini-local
@@ -230,6 +233,22 @@ importers:
       '@types/node':
         specifier: ^22.19.21
         version: 22.19.21
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+
+  packages/adapters/freebuff-local:
+    dependencies:
+      '@paperclipai/adapter-utils':
+        specifier: workspace:*
+        version: link:../../adapter-utils
+      picocolors:
+        specifier: ^1.1.1
+        version: 1.1.1
+    devDependencies:
+      '@types/node':
+        specifier: ^24.6.0
+        version: 24.13.3
       typescript:
         specifier: ^5.7.3
         version: 5.9.3
@@ -797,6 +816,9 @@ importers:
       '@paperclipai/adapter-cursor-local':
         specifier: workspace:*
         version: link:../packages/adapters/cursor-local
+      '@paperclipai/adapter-freebuff-local':
+        specifier: workspace:*
+        version: link:../packages/adapters/freebuff-local
       '@paperclipai/adapter-gemini-local':
         specifier: workspace:*
         version: link:../packages/adapters/gemini-local
@@ -975,6 +997,9 @@ importers:
       '@paperclipai/adapter-cursor-local':
         specifier: workspace:*
         version: link:../packages/adapters/cursor-local
+      '@paperclipai/adapter-freebuff-local':
+        specifier: workspace:*
+        version: link:../packages/adapters/freebuff-local
       '@paperclipai/adapter-gemini-local':
         specifier: workspace:*
         version: link:../packages/adapters/gemini-local

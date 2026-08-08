@@ -44,6 +44,7 @@
     "@paperclipai/adapter-gemini-local": "workspace:*",
     "@paperclipai/adapter-grok-local": "workspace:*",
     "@paperclipai/adapter-crush-local": "workspace:*",
+    "@paperclipai/adapter-freebuff-local": "workspace:*",
     "@paperclipai/adapter-kilocode-local": "workspace:*",
     "@paperclipai/adapter-mimo-local": "workspace:*",
     "@paperclipai/adapter-opencode-local": "workspace:*",
