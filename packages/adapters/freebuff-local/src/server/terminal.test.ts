@@ -23,7 +23,7 @@ function input(overrides: Partial<TerminalInput> = {}): TerminalInput {
     userMessageCount: 1,
     elapsedMs: 1_000,
     timeoutMs: 600_000,
-    promptGraceMs: 30_000,
+    promptDeadlineMs: 30_000,
     promptSent: true,
     processExited: false,
     ...overrides,

@@ -66,11 +66,13 @@ function harness(overrides: Partial<FreebuffWatchDeps> = {}, onTick?: (elapsed: 
       onTick?.(clock);
     },
     framePrompt: (text) => `<paste>${text}</paste>`,
-    timeoutMs: 600_000,
-    readyTimeoutMs: 45_000,
-    promptDelayMs: 6_000,
-    promptGraceMs: 30_000,
-    pollIntervalMs: 500,
+    timing: {
+      timeoutMs: 600_000,
+      readyTimeoutMs: 45_000,
+      promptDelayMs: 6_000,
+      promptGraceMs: 30_000,
+      pollIntervalMs: 500,
+    },
     ...overrides,
   };
   return { deps, emitted, typed, get submits() { return submits; } } as Harness;

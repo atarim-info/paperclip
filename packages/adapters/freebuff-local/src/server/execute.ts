@@ -3,7 +3,6 @@ import os from "node:os";
 import path from "node:path";
 import type { AdapterExecutionContext, AdapterExecutionResult } from "@paperclipai/adapter-utils";
 import {
-  asNumber,
   asString,
   buildPaperclipEnv,
   joinPromptSections,
@@ -15,7 +14,8 @@ import { freebuffProjectChatsDir, hasFreebuffCredentials } from "./chat-store.js
 import { bracketPaste, spawnFreebuffPty } from "./pty.js";
 import { watchFreebuffRun } from "./watch.js";
 import { outcomeExitCode, type FreebuffOutcome } from "./terminal.js";
-import { DEFAULT_FREEBUFF_COMMAND, DEFAULT_FREEBUFF_MODEL } from "../index.js";
+import { DEFAULT_FREEBUFF_MODEL } from "../index.js";
+import { resolveFreebuffRunConfig } from "../config.js";
 
 /**
  * Runs a Paperclip task through the Freebuff CLI.
@@ -24,12 +24,6 @@ import { DEFAULT_FREEBUFF_COMMAND, DEFAULT_FREEBUFF_MODEL } from "../index.js";
  * problem, so this adapter deliberately omits the remote/sandbox branch the
  * other `*-local` adapters carry.
  */
-
-const DEFAULT_TIMEOUT_SEC = 1800;
-const DEFAULT_READY_TIMEOUT_MS = 45_000;
-const DEFAULT_PROMPT_DELAY_MS = 6_000;
-const DEFAULT_PROMPT_GRACE_MS = 30_000;
-const DEFAULT_POLL_INTERVAL_MS = 500;
 
 /** Outcomes that mean "not our fault, may succeed later". */
 const QUOTA_OUTCOMES: ReadonlySet<FreebuffOutcome> = new Set(["no_session", "session_expired"]);
@@ -41,7 +35,9 @@ function sleep(ms: number): Promise<void> {
 export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExecutionResult> {
   const config = ctx.config ?? {};
   const context = ctx.context ?? {};
-  const command = asString(config.command, DEFAULT_FREEBUFF_COMMAND);
+  // Command paths and every timing knob resolve adapterConfig > env > default;
+  // the timeline they describe is documented in ../config.ts.
+  const runConfig = resolveFreebuffRunConfig(config, process.env);
   const homeDir = asString(config.homeDir, os.homedir());
 
   const cwd = asString(config.cwd, asString(context.paperclipWorkspace, ""));
@@ -73,10 +69,14 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     });
   }
 
-  const timeoutSec = asNumber(config.timeoutSec, DEFAULT_TIMEOUT_SEC);
   const env = { ...currentEnv(), ...buildPaperclipEnv(ctx.agent) };
   const chatsDir = freebuffProjectChatsDir(cwd, homeDir);
-  const pty = spawnFreebuffPty({ command, cwd, env });
+  const pty = spawnFreebuffPty({
+    command: runConfig.command,
+    ptyLauncher: runConfig.ptyLauncher,
+    cwd,
+    env,
+  });
 
   if (ctx.onSpawn && pty.pid > 0) {
     await ctx.onSpawn({
@@ -95,11 +95,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
       now: () => Date.now(),
       sleep,
       framePrompt: bracketPaste,
-      timeoutMs: timeoutSec > 0 ? timeoutSec * 1000 : Number.MAX_SAFE_INTEGER,
-      readyTimeoutMs: asNumber(config.readyTimeoutMs, DEFAULT_READY_TIMEOUT_MS),
-      promptDelayMs: asNumber(config.promptDelayMs, DEFAULT_PROMPT_DELAY_MS),
-      promptGraceMs: asNumber(config.promptGraceMs, DEFAULT_PROMPT_GRACE_MS),
-      pollIntervalMs: asNumber(config.pollIntervalMs, DEFAULT_POLL_INTERVAL_MS),
+      timing: runConfig,
     });
 
     const conversationId = result.chatDir ? path.basename(result.chatDir) : null;
@@ -122,6 +118,10 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
       provider: "freebuff",
       biller: "freebuff",
       costUsd: null,
+      // Traceability only: this records which on-disk conversation a run
+      // produced. It is deliberately NOT a resume handle — `execute` never
+      // passes `--continue`, and sessionManagement declares
+      // supportsSessionResume: false. See sessionCodec in ./index.ts.
       sessionParams: conversationId ? { conversationId, cwd } : null,
       sessionDisplayId: conversationId,
       summary: result.summary,

@@ -53,8 +53,12 @@ export interface TerminalInput {
   userMessageCount: number;
   elapsedMs: number;
   timeoutMs: number;
-  /** Milliseconds after launch by which a prompt must have been recorded. */
-  promptGraceMs: number;
+  /**
+   * Absolute elapsed-ms deadline (not a duration) by which Freebuff must have
+   * recorded a user message. Computed by the caller as
+   * `promptSentAt + promptGraceMs`; see ../config.ts for the timeline.
+   */
+  promptDeadlineMs: number;
   promptSent: boolean;
   processExited: boolean;
 }
@@ -112,11 +116,11 @@ export function decideTerminal(input: TerminalInput): TerminalDecision {
 
   // The prompt was typed but Freebuff never recorded a user message — the TUI
   // was not at an input box (first-run screen, model picker, login).
-  if (input.promptSent && input.userMessageCount === 0 && input.elapsedMs > input.promptGraceMs) {
+  if (input.promptSent && input.userMessageCount === 0 && input.elapsedMs > input.promptDeadlineMs) {
     return {
       done: true,
       outcome: "prompt_not_accepted",
-      reason: `Freebuff did not record the prompt within ${Math.round(input.promptGraceMs / 1000)}s; its UI was probably not at an input box.`,
+      reason: `Freebuff did not record the prompt within ${Math.round(input.promptDeadlineMs / 1000)}s of launch; its UI was probably not at an input box.`,
       retryable: false,
     };
   }

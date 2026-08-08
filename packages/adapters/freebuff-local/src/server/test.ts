@@ -10,15 +10,19 @@ import type {
 } from "@paperclipai/adapter-utils";
 import { asString } from "@paperclipai/adapter-utils/server-utils";
 import { credentialsPath, hasFreebuffCredentials } from "./chat-store.js";
-import { DEFAULT_FREEBUFF_COMMAND, type } from "../index.js";
-import { PTY_LAUNCHER } from "./pty.js";
+import { type } from "../index.js";
+import { resolveFreebuffRunConfig } from "../config.js";
 
 /** Probes everything a Freebuff run depends on, without consuming a session. */
 export async function testEnvironment(
   ctx: AdapterEnvironmentTestContext,
 ): Promise<AdapterEnvironmentTestResult> {
   const config = ctx.config ?? {};
-  const command = asString(config.command, DEFAULT_FREEBUFF_COMMAND);
+  // Resolve exactly as execute() does, so this probes what a run would use.
+  const { command, ptyLauncher } = resolveFreebuffRunConfig(
+    config,
+    typeof process === "undefined" ? {} : process.env,
+  );
   const homeDir = asString(config.homeDir, os.homedir());
   const checks: AdapterEnvironmentCheck[] = [];
 
@@ -34,15 +38,15 @@ export async function testEnvironment(
   }
 
   // The PTY allocator. Without it there is no way to run Freebuff at all.
-  const launcher = await probe(PTY_LAUNCHER, ["--version"]);
+  const launcher = await probe(ptyLauncher, ["--version"]);
   checks.push(
     launcher.ok
-      ? { code: "pty_launcher", level: "info", message: `${PTY_LAUNCHER}(1) available for PTY allocation.` }
+      ? { code: "pty_launcher", level: "info", message: `${ptyLauncher} available for PTY allocation.` }
       : {
           code: "pty_launcher",
           level: "error",
-          message: `${PTY_LAUNCHER}(1) not found; it is required to give Freebuff a terminal.`,
-          hint: "Install util-linux (provides script(1)).",
+          message: `${ptyLauncher} not found; it is required to give Freebuff a terminal.`,
+          hint: "Install util-linux (provides script(1)), or set PAPERCLIP_FREEBUFF_PTY_LAUNCHER to its path.",
         },
   );
 
@@ -60,7 +64,7 @@ export async function testEnvironment(
           level: "error",
           message: `${command} could not be run.`,
           detail: version.output.trim().slice(0, 300) || null,
-          hint: "Install with `npm install -g freebuff`.",
+          hint: "Install with `npm install -g freebuff`, or set PAPERCLIP_FREEBUFF_COMMAND to its path.",
         },
   );
 

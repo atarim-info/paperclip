@@ -10,6 +10,7 @@ import {
 import { diffTranscript, summarizeTranscript, type TranscriptCursor } from "./transcript.js";
 import { decideTerminal, type FreebuffOutcome, type TerminalDecision } from "./terminal.js";
 import { serializeFreebuffEvent, type FreebuffEvent } from "../events.js";
+import type { FreebuffRunConfig } from "../config.js";
 
 /**
  * The run loop: polls Freebuff's chat store, streams new transcript events, and
@@ -33,14 +34,11 @@ export interface FreebuffWatchDeps {
   sleep(ms: number): Promise<void>;
   /** Wrap the prompt in bracketed paste before typing it. */
   framePrompt(text: string): string;
-  timeoutMs: number;
-  /** How long to wait for the chat dir before giving up on readiness. */
-  readyTimeoutMs: number;
-  /** Delay between the chat dir appearing and typing (lets the TUI settle). */
-  promptDelayMs: number;
-  /** How long after typing to wait for Freebuff to record the prompt. */
-  promptGraceMs: number;
-  pollIntervalMs: number;
+  /** Resolved timing knobs; the timeline they describe is in ../config.ts. */
+  timing: Pick<
+    FreebuffRunConfig,
+    "timeoutMs" | "readyTimeoutMs" | "promptDelayMs" | "promptGraceMs" | "pollIntervalMs"
+  >;
 }
 
 export interface FreebuffWatchResult {
@@ -86,10 +84,10 @@ export async function watchFreebuffRun(deps: FreebuffWatchDeps): Promise<Freebuf
         await emitEvents([
           { t: "status", ts: stamp(), message: `conversation ${path.basename(chatDir)}` },
         ]);
-      } else if (elapsed > deps.readyTimeoutMs) {
+      } else if (elapsed > deps.timing.readyTimeoutMs) {
         return {
           outcome: "exited_early",
-          reason: `Freebuff never created a conversation directory under ${deps.chatsDir} within ${Math.round(deps.readyTimeoutMs / 1000)}s.`,
+          reason: `Freebuff never created a conversation directory under ${deps.chatsDir} within ${Math.round(deps.timing.readyTimeoutMs / 1000)}s.`,
           retryable: false,
           chatDir: null,
           summary: null,
@@ -111,7 +109,7 @@ export async function watchFreebuffRun(deps: FreebuffWatchDeps): Promise<Freebuf
     }
 
     // Type the prompt once the conversation exists and the TUI has settled.
-    if (chatDir && promptSentAt === null && elapsed > deps.promptDelayMs) {
+    if (chatDir && promptSentAt === null && elapsed > deps.timing.promptDelayMs) {
       deps.pty.write(deps.framePrompt(deps.prompt));
       deps.pty.submit();
       promptSentAt = deps.now();
@@ -127,8 +125,10 @@ export async function watchFreebuffRun(deps: FreebuffWatchDeps): Promise<Freebuf
       sawAskUser,
       userMessageCount: messages ? countUserMessages(messages) : 0,
       elapsedMs: elapsed,
-      timeoutMs: deps.timeoutMs,
-      promptGraceMs: (promptSentAt === null ? deps.promptDelayMs : promptSentAt - startedAt) + deps.promptGraceMs,
+      timeoutMs: deps.timing.timeoutMs,
+      promptDeadlineMs:
+        (promptSentAt === null ? deps.timing.promptDelayMs : promptSentAt - startedAt) +
+        deps.timing.promptGraceMs,
       promptSent: promptSentAt !== null,
       processExited: deps.pty.exited(),
     });
@@ -149,7 +149,7 @@ export async function watchFreebuffRun(deps: FreebuffWatchDeps): Promise<Freebuf
       };
     }
 
-    await deps.sleep(deps.pollIntervalMs);
+    await deps.sleep(deps.timing.pollIntervalMs);
   }
 }
 

@@ -8,7 +8,14 @@
 export const type = "freebuff_local";
 export const label = "Freebuff (local)";
 
-export const DEFAULT_FREEBUFF_COMMAND = "freebuff";
+export {
+  DEFAULT_FREEBUFF_COMMAND,
+  DEFAULT_PTY_LAUNCHER,
+  FREEBUFF_DEFAULTS,
+  FREEBUFF_ENV_VARS,
+  resolveFreebuffRunConfig,
+  type FreebuffRunConfig,
+} from "./config.js";
 
 /**
  * Freebuff exposes no `--model` flag — the model is chosen in its TUI picker,

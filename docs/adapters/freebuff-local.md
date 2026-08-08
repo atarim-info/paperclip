@@ -52,7 +52,34 @@ viewer.
 | `promptDelayMs` | `6000` | Settle time before typing the prompt |
 | `promptGraceMs` | `30000` | How long to wait for Freebuff to record the prompt |
 | `readyTimeoutMs` | `45000` | How long to wait for Freebuff to start |
+| `ptyLauncher` | `script` | PTY allocator, for hosts where `script(1)` is elsewhere |
 | `homeDir` | `os.homedir()` | Where to look for the chat store and credentials |
+
+Every value resolves **adapterConfig > environment > default**, so a
+non-standard install can be fixed machine-wide without editing each agent:
+
+| Env var | Overrides |
+|---|---|
+| `PAPERCLIP_FREEBUFF_COMMAND` | `command` |
+| `PAPERCLIP_FREEBUFF_PTY_LAUNCHER` | `ptyLauncher` |
+| `PAPERCLIP_FREEBUFF_TIMEOUT_SEC` | `timeoutSec` |
+| `PAPERCLIP_FREEBUFF_READY_TIMEOUT_MS` | `readyTimeoutMs` |
+| `PAPERCLIP_FREEBUFF_PROMPT_DELAY_MS` | `promptDelayMs` |
+| `PAPERCLIP_FREEBUFF_PROMPT_GRACE_MS` | `promptGraceMs` |
+| `PAPERCLIP_FREEBUFF_POLL_INTERVAL_MS` | `pollIntervalMs` |
+
+The timing knobs describe one timeline, drawn in full in
+`packages/adapters/freebuff-local/src/config.ts`:
+
+```
+t=0            spawn freebuff under the PTY
+  |<-- readyTimeoutMs ------>|   chat dir must appear, else exited_early
+  |<-- promptDelayMs -->|        prompt typed here
+                        |<-- promptGraceMs -->|
+                                              a user message must be recorded,
+                                              else prompt_not_accepted
+  |<----------------- timeoutSec ------------------>| hard ceiling
+```
 
 There is no model field: Freebuff has no `--model` flag, so the model comes from
 its own picker. The `models` list in the adapter is descriptive only.
@@ -87,7 +114,13 @@ mid-response and reported as `freebuff_session_expired`.
 - **Local execution only.** Driving a TUI over a remote transport is out of
   scope, so there is no remote/sandbox branch.
 - **No session resume.** `--continue <conversation-id>` exists and the
-  conversation id is persisted, but Paperclip-level resume is not wired up.
+  conversation id is persisted, but that id is **traceability only** — it
+  records which on-disk conversation a run produced, and is not a resume
+  handle. `execute` never passes `--continue`, and `supportsSessionResume` is
+  `false`. A run can end at any point (`ask-user`, session expiry) with its
+  conversation half-finished, so a persisted id is no proof of continuity.
+  `assertFreebuffSessionIsTraceabilityOnly` fails the test suite if the flag is
+  flipped without implementing resume.
 - **Prompt injection is screen-driven.** We never read the screen, but we do
   type into it, so a change to Freebuff's startup flow can break prompt
   delivery. That surfaces as `freebuff_prompt_not_accepted` rather than a hang.

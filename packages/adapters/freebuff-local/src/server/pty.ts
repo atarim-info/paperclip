@@ -1,4 +1,5 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+import { DEFAULT_PTY_LAUNCHER } from "../config.js";
 
 /**
  * Runs Freebuff inside a pseudo-terminal.
@@ -21,12 +22,12 @@ import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
  * box.
  */
 
-export const PTY_LAUNCHER = "script";
-
 export interface FreebuffPtyOptions {
   command: string;
   cwd: string;
   env: Record<string, string>;
+  /** PTY allocator; defaults to util-linux `script(1)`. */
+  ptyLauncher?: string;
   columns?: number;
   rows?: number;
 }
@@ -54,12 +55,16 @@ export function bracketPaste(text: string): string {
   return `\x1b[200~${text}\x1b[201~`;
 }
 
+export function ptyLauncherOf(options: FreebuffPtyOptions): string {
+  return options.ptyLauncher?.trim() || DEFAULT_PTY_LAUNCHER;
+}
+
 export function buildPtyArgv(options: FreebuffPtyOptions): string[] {
   return ["-qec", `${options.command} --cwd ${JSON.stringify(options.cwd)}`, "/dev/null"];
 }
 
 export function spawnFreebuffPty(options: FreebuffPtyOptions): FreebuffPtyHandle {
-  const child: ChildProcessWithoutNullStreams = spawn(PTY_LAUNCHER, buildPtyArgv(options), {
+  const child: ChildProcessWithoutNullStreams = spawn(ptyLauncherOf(options), buildPtyArgv(options), {
     stdio: ["pipe", "pipe", "pipe"],
     detached: true, // own process group, so dispose() can reap the whole tree
     env: {
