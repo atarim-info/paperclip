@@ -105,6 +105,11 @@ const adapterDisplayMap: Record<string, AdapterDisplayInfo> = {
     description: "OpenCode multi-provider harness",
     icon: OpenCodeLogoIcon,
   },
+  freebuff_local: {
+    label: "Freebuff",
+    description: "Freebuff CLI harness (free tier, PTY-driven)",
+    icon: Terminal,
+  },
   crush_local: {
     label: "Crush",
     description: "Charm Crush CLI harness",
