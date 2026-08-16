@@ -43,6 +43,7 @@
     "@paperclipai/adapter-grok-local": "workspace:*",
     "@paperclipai/adapter-openclaw-gateway": "workspace:*",
     "@paperclipai/adapter-crush-local": "workspace:*",
+    "@paperclipai/adapter-freebuff-local": "workspace:*",
     "@paperclipai/adapter-kilocode-local": "workspace:*",
     "@paperclipai/adapter-mimo-local": "workspace:*",
     "@paperclipai/adapter-opencode-local": "workspace:*",

@@ -9,6 +9,7 @@ import { hermesGatewayUIAdapter } from "./hermes-gateway";
 import { hermesLocalUIAdapter } from "./hermes-local";
 import { openCodeLocalUIAdapter } from "./opencode-local";
 import { crushLocalUIAdapter } from "./crush-local";
+import { freebuffLocalUIAdapter } from "./freebuff-local";
 import { kilocodeLocalUIAdapter } from "./kilocode-local";
 import { mimoLocalUIAdapter } from "./mimo-local";
 import { piLocalUIAdapter } from "./pi-local";
@@ -64,6 +65,7 @@ function registerBuiltInUIAdapters() {
     hermesLocalUIAdapter,
     openCodeLocalUIAdapter,
     crushLocalUIAdapter,
+    freebuffLocalUIAdapter,
     kilocodeLocalUIAdapter,
     mimoLocalUIAdapter,
     piLocalUIAdapter,

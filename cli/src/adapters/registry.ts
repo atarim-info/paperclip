@@ -9,6 +9,7 @@ import { formatStdoutEvent as printHermesGatewayStreamEvent } from "@paperclipai
 import { printHermesStreamEvent } from "@paperclipai/hermes-paperclip-adapter/cli";
 import { printOpenCodeStreamEvent } from "@paperclipai/adapter-opencode-local/cli";
 import { printCrushStreamEvent } from "@paperclipai/adapter-crush-local/cli";
+import { printFreebuffStreamEvent } from "@paperclipai/adapter-freebuff-local/cli";
 import { printKiloStreamEvent } from "@paperclipai/adapter-kilocode-local/cli";
 import { printMimoStreamEvent } from "@paperclipai/adapter-mimo-local/cli";
 import { printPiStreamEvent } from "@paperclipai/adapter-pi-local/cli";
@@ -29,6 +30,11 @@ const codexLocalCLIAdapter: CLIAdapterModule = {
 const openCodeLocalCLIAdapter: CLIAdapterModule = {
   type: "opencode_local",
   formatStdoutEvent: printOpenCodeStreamEvent,
+};
+
+const freebuffLocalCLIAdapter: CLIAdapterModule = {
+  type: "freebuff_local",
+  formatStdoutEvent: printFreebuffStreamEvent,
 };
 
 const crushLocalCLIAdapter: CLIAdapterModule = {
@@ -92,6 +98,7 @@ const adaptersByType = new Map<string, CLIAdapterModule>(
     codexLocalCLIAdapter,
     openCodeLocalCLIAdapter,
     crushLocalCLIAdapter,
+    freebuffLocalCLIAdapter,
     kilocodeLocalCLIAdapter,
     mimoLocalCLIAdapter,
     piLocalCLIAdapter,
