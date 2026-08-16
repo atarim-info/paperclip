@@ -2,6 +2,17 @@
 
 Guidance for human and AI contributors working in this repository.
 
+## 0. Repository Policy (DevOps)
+
+This directory is the **paperclip server repo** (company atarim-info fork).
+It is a restricted workspace: agent working directories must live only under
+~/projects/Projects/paperclip-projects/. Do **not** switch this repo to
+branches from other projects (e.g. UTMS ATA-* microservice branches) - doing
+so deletes the paperclip monorepo manifests (package.json, pnpm-workspace.yaml)
+and crash-loops the paperclip.service systemd unit that runs the server from
+this tree. The pre-checkout hook blocks such switches; if a legit branch needs
+a checkout, work in that project's own repo/worktree instead.
+
 ## 1. Purpose
 
 Paperclip is a control plane for AI-agent companies.
