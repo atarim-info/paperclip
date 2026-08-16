@@ -76,6 +76,14 @@ export const ADAPTER_SESSION_MANAGEMENT: Record<string, AdapterSessionManagement
     nativeContextManagement: "unknown",
     defaultSessionCompaction: DEFAULT_SESSION_COMPACTION_POLICY,
   },
+  // Freebuff can resume a conversation with `--continue <id>`, but this
+  // adapter does not drive resume yet (see its design doc), so Paperclip must
+  // not assume a session carries across runs.
+  freebuff_local: {
+    supportsSessionResume: false,
+    nativeContextManagement: "unknown",
+    defaultSessionCompaction: DEFAULT_SESSION_COMPACTION_POLICY,
+  },
   crush_local: {
     supportsSessionResume: true,
     nativeContextManagement: "unknown",

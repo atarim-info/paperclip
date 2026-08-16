@@ -100,6 +100,15 @@ import {
   modelProfiles as openCodeModelProfiles,
 } from "@paperclipai/adapter-opencode-local";
 import {
+  execute as freebuffExecute,
+  testEnvironment as freebuffTestEnvironment,
+  sessionCodec as freebuffSessionCodec,
+} from "@paperclipai/adapter-freebuff-local/server";
+import {
+  agentConfigurationDoc as freebuffAgentConfigurationDoc,
+  models as freebuffModels,
+} from "@paperclipai/adapter-freebuff-local";
+import {
   execute as crushExecute,
   listCrushSkills,
   syncCrushSkills,
@@ -440,6 +449,18 @@ const openCodeLocalAdapter: ServerAdapterModule = {
   agentConfigurationDoc: openCodeAgentConfigurationDoc,
 };
 
+const freebuffLocalAdapter: ServerAdapterModule = {
+  type: "freebuff_local",
+  execute: freebuffExecute,
+  testEnvironment: freebuffTestEnvironment,
+  sessionCodec: freebuffSessionCodec,
+  // Freebuff has no --model flag; this list is descriptive only.
+  models: freebuffModels,
+  sessionManagement: getAdapterSessionManagement("freebuff_local") ?? undefined,
+  supportsLocalAgentJwt: true,
+  agentConfigurationDoc: freebuffAgentConfigurationDoc,
+};
+
 const crushLocalAdapter: ServerAdapterModule = {
   type: "crush_local",
   execute: crushExecute,
@@ -535,6 +556,7 @@ function registerBuiltInAdapters() {
     codexLocalAdapter,
     openCodeLocalAdapter,
     crushLocalAdapter,
+    freebuffLocalAdapter,
     kilocodeLocalAdapter,
     mimoLocalAdapter,
     piLocalAdapter,
