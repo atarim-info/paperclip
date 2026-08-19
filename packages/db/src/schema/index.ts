@@ -120,6 +120,7 @@ export { activityLog } from "./activity_log.js";
 export { companySecretProviderConfigs } from "./company_secret_provider_configs.js";
 export { userSecretDefinitions } from "./user_secret_definitions.js";
 export { companySecrets } from "./company_secrets.js";
+export { systemAnnouncements } from "./system_announcements.js";
 export { companySecretVersions } from "./company_secret_versions.js";
 export { companySecretBindings } from "./company_secret_bindings.js";
 export { companySecretProposals } from "./company_secret_proposals.js";

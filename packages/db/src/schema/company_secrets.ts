@@ -25,6 +25,11 @@ export const companySecrets = pgTable(
     description: text("description"),
     lastResolvedAt: timestamp("last_resolved_at", { withTimezone: true }),
     lastRotatedAt: timestamp("last_rotated_at", { withTimezone: true }),
+    rotationPolicy: jsonb("rotation_policy").$type<{
+      intervalDays?: number;
+      maxAgeDays?: number;
+      warningDaysBefore?: number;
+    }>(),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
     createdByAgentId: uuid("created_by_agent_id").references(() => agents.id, { onDelete: "set null" }),
     createdByUserId: text("created_by_user_id"),
