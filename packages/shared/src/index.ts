@@ -1,4 +1,5 @@
 export { agentAdapterTypeSchema, optionalAgentAdapterTypeSchema } from "./adapter-type.js";
+export { ADAPTER_AUTH_MISSING_CHECK_CODE } from "./adapter-auth-check-code.js";
 export {
   decisionEffectStalenessSchema,
   decisionOptionStyleSchema,
@@ -83,6 +84,19 @@ export {
   type ResponsibleUserSource,
   type OriginatingActor,
 } from "./issue-attribution.js";
+export {
+  ARTIFACT_REVIEW_DOCUMENT_KEY_PREFIX,
+  MARKDOWN_ATTACHMENT_CONTENT_TYPES,
+  MARKDOWN_REVIEW_DOCUMENT_MAX_BYTES,
+  artifactReviewDocumentKey,
+  getAttachmentArtifactWorkProductMetadata,
+  getMarkdownWorkProductAttachmentMetadata,
+  isArtifactReviewDocumentKey,
+  isMarkdownArtifactWorkProduct,
+  isMarkdownAttachmentContent,
+  workProductIdFromArtifactReviewDocumentKey,
+  type AttachmentArtifactWorkProductLike,
+} from "./markdown-work-products.js";
 export {
   ISSUE_WRITE_DENIAL_CODES,
   describeIssueWriteDenial,
@@ -300,6 +314,7 @@ export {
   ISSUE_WATCHDOG_DISCOVERY_KINDS,
   ISSUE_SURFACE_VISIBILITIES,
   ISSUE_RECOVERY_ACTION_KINDS,
+  ISSUE_DISPOSITION_REPAIR_RETRY_REASON,
   ISSUE_RECOVERY_ACTION_STATUSES,
   ISSUE_RECOVERY_ACTION_OWNER_TYPES,
   ISSUE_RECOVERY_ACTION_OUTCOMES,
@@ -654,6 +669,7 @@ export type {
   WriteSummarySlotResponse,
   Environment,
   EnvironmentDeleteBlastRadius,
+  EnvironmentDeleteReusableLeaseHolder,
   EnvironmentDeleteBlockedReason,
   EnvironmentLease,
   EnvironmentProbeResult,
@@ -816,6 +832,14 @@ export type {
   AdapterAuthSessionPrompt,
   AdapterAuthSessionOwnerResponse,
   StartAdapterAuthSessionRequest,
+  AdapterAuthPanelMode,
+  ClaudeSetupTokenSessionPrompt,
+  ClaudeSetupTokenSessionResponse,
+  ClaudeSetupTokenSessionOwnerResponse,
+  SubmitBrowserCodeRequest,
+  ClaudeSetupTokenCompletionResponse,
+  SetupTokenTransportAdvisory,
+  SetupTokenTransportAdvisoryCode,
   AssetImage,
   Project,
   ProjectBudgetSummary,
@@ -868,6 +892,11 @@ export type {
   WorkspaceOperation,
   WorkspaceOperationPhase,
   WorkspaceOperationStatus,
+  WorkspaceLoginHandoffTicketResponse,
+  WorkspaceReadiness,
+  WorkspaceReadinessProbeResult,
+  WorkspaceReadinessState,
+  WorkspaceSeedReadinessState,
   NormalizedWorkspaceFileAvailabilityQuery,
   WorkspaceFileAvailabilityQuery,
   WorkspaceFileAvailabilityRequest,
@@ -889,8 +918,6 @@ export type {
   WorkspaceRuntimeDesiredState,
   WorkspaceRealizationRecord,
   WorkspaceRealizationRequest,
-  WorkspaceRealizationSyncStrategy,
-  WorkspaceRealizationTransport,
   ExecutionWorkspaceStrategyType,
   ExecutionWorkspaceMode,
   SharedWorkspaceConcurrency,
@@ -1036,6 +1063,8 @@ export type {
   RequestConfirmationResult,
   RequestConfirmationToolActionPayload,
   RequestConfirmationToolActionResult,
+  RequestConfirmationSecretProposalPayload,
+  RequestConfirmationSecretProposalResult,
   RequestCheckboxConfirmationOption,
   RequestCheckboxConfirmationPayload,
   RequestCheckboxConfirmationResult,
@@ -1381,6 +1410,7 @@ export type {
   PluginWebhookDeclaration,
   PluginToolDeclaration,
   PluginEnvironmentDriverDeclaration,
+  SandboxProviderCapabilities,
   PluginEnvironmentTemplateConfigBinding,
   PluginManagedAgentDeclaration,
   PluginManagedProjectDeclaration,
@@ -1425,6 +1455,7 @@ export type {
   QuotaWindow,
   ProviderQuotaResult,
 } from "./types/index.js";
+export { WORKSPACE_READINESS_STATES } from "./types/index.js";
 export {
   COMPANY_SEARCH_EXTRACT_KINDS,
   COMPANY_SEARCH_EXTRACT_SCOPES,
@@ -1435,6 +1466,8 @@ export {
 export {
   ADAPTER_AUTH_SESSION_STATUSES,
   ADAPTER_AUTH_SESSION_INTERNAL_STATUSES,
+  ADAPTER_AUTH_PANEL_MODES,
+  SETUP_TOKEN_TRANSPORT_ADVISORY_CODE,
 } from "./types/index.js";
 export {
   ADAPTER_AUTH_SESSION_ACTIVE_STATUSES,
@@ -1450,6 +1483,27 @@ export {
   adapterAuthSessionOwnerResponseSchema,
   startAdapterAuthSessionRequestSchema,
 } from "./validators/adapter-auth-session.js";
+export {
+  startClaudeSetupTokenSessionRequestSchema,
+  adapterAuthPanelModeSchema,
+  claudeSetupTokenSessionResponseSchema,
+  claudeSetupTokenSessionPromptSchema,
+  claudeSetupTokenSessionOwnerResponseSchema,
+  setupTokenTransportAdvisorySchema,
+  submitBrowserCodeRequestSchema,
+  browserCodeSchema,
+  isValidBrowserCode,
+  BROWSER_CODE_MAX_LENGTH,
+  BROWSER_CODE_DISALLOWED_CHAR,
+  storedSessionIdSchema,
+  claudeSetupTokenCompletionResponseSchema,
+  claudeSetupTokenOverwriteSchema,
+  claudeOAuthTokenStatusResponseSchema,
+  type StartClaudeSetupTokenSessionRequest,
+  type ClaudeSetupTokenOverwrite,
+  type ClaudeOAuthTokenStatusResponse,
+  type BrowserCode,
+} from "./validators/claude-setup-token-session.js";
 export {
   ISSUE_REFERENCE_IDENTIFIER_RE,
   buildIssueReferenceHref,
@@ -2216,6 +2270,7 @@ export {
   pluginWebhookDeclarationSchema,
   pluginToolDeclarationSchema,
   pluginEnvironmentDriverDeclarationSchema,
+  sandboxProviderCapabilitiesSchema,
   pluginUiSlotDeclarationSchema,
   pluginLauncherActionDeclarationSchema,
   pluginLauncherRenderDeclarationSchema,
@@ -2235,6 +2290,7 @@ export {
   type PluginWebhookDeclarationInput,
   type PluginToolDeclarationInput,
   type PluginEnvironmentDriverDeclarationInput,
+  type SandboxProviderCapabilitiesInput,
   type PluginUiSlotDeclarationInput,
   type PluginLauncherActionDeclarationInput,
   type PluginLauncherRenderDeclarationInput,
@@ -2343,6 +2399,7 @@ export {
   getAdapterEnvironmentSupport,
   isEnvironmentDriverSupportedForAdapter,
   isSandboxProviderSupportedForAdapter,
+  resolveDeclaredSandboxCapabilities,
   supportedEnvironmentDriversForAdapter,
   supportedSandboxProvidersForAdapter,
 } from "./environment-support.js";
@@ -2401,6 +2458,7 @@ export {
   startEnvironmentCustomImageSetupSessionSchema,
   finishEnvironmentCustomImageSetupSessionSchema,
   cancelEnvironmentCustomImageSetupSessionSchema,
+  relinkEnvironmentCustomImageTemplateSchema,
   createEnvironmentCustomImageTerminalSessionTokenSchema,
   environmentCustomImageTerminalSessionTokenSchema,
   type EnvironmentCustomImageSetupConnectionSummary,
@@ -2409,6 +2467,7 @@ export {
   type StartEnvironmentCustomImageSetupSession,
   type FinishEnvironmentCustomImageSetupSession,
   type CancelEnvironmentCustomImageSetupSession,
+  type RelinkEnvironmentCustomImageTemplate,
   type CreateEnvironmentCustomImageTerminalSessionToken,
   type EnvironmentCustomImageTerminalSessionToken,
 } from "./validators/environment-custom-images.js";
@@ -2425,3 +2484,71 @@ export {
   type FeatureTier,
   type InstanceFeatureKey,
 } from "./feature-catalog.js";
+export {
+  HIDEABLE_GENERAL_SECTIONS,
+  HIDEABLE_INSTANCE_PAGES,
+  HIDEABLE_SETTING_KEYS,
+  SETTINGS_OPERATOR_MANAGED_ERROR_CODE,
+  UI_ONLY_GENERAL_SECTIONS,
+  experimentalSettingKey,
+  hidesExperimentalSetting,
+  hidesGeneralSection,
+  hidesInstancePage,
+  parseHiddenSettingsList,
+  type HideableExperimentalSetting,
+  type HideableGeneralSection,
+  type HideableInstancePage,
+  type HideableSettingKey,
+  type ParsedHiddenSettings,
+} from "./settings-visibility.js";
+
+// --- Runtime exposure (opt-in Tailscale HTTPS for managed branch runtimes) ---
+// PAP-17049 plan, PAP-17050 threat-model verdict. Contract shared across DB,
+// server, UI, runtime, and the least-privilege host broker.
+export type {
+  RuntimeExposureProvider,
+  RuntimeExposureFailurePolicy,
+  RuntimeExposureConfig,
+  RuntimeExposureState,
+  RuntimeExposureListenerPurpose,
+  RuntimeExposureListener,
+  RuntimeExposureStatus,
+} from "./types/runtime-exposure.js";
+export {
+  runtimeExposureProviderSchema,
+  runtimeExposureFailurePolicySchema,
+  runtimeExposureConfigSchema,
+  runtimeExposureStateSchema,
+  runtimeExposureListenerPurposeSchema,
+  runtimeExposureListenerSchema,
+  runtimeExposureStatusSchema,
+  parseRuntimeExposureConfig,
+  readRuntimeExposureIntent,
+  resolveDeclaredRuntimeExposureConfig,
+  DEFAULT_TAILSCALE_HTTPS_EXPOSURE,
+  type RuntimeExposureConfigInput,
+  type RuntimeExposureIntent,
+  type RuntimeExposureStatusInput,
+} from "./validators/runtime-exposure.js";
+export {
+  RUNTIME_EXPOSURE_APP_PORT_MIN,
+  RUNTIME_EXPOSURE_APP_PORT_MAX,
+  RUNTIME_EXPOSURE_HMR_PORT_OFFSET,
+  RUNTIME_EXPOSURE_HMR_PORT_MIN,
+  RUNTIME_EXPOSURE_HMR_PORT_MAX,
+  isRuntimeExposureAppPort,
+  isRuntimeExposureHmrPort,
+  isAllowedRuntimeExposurePort,
+  deriveViteHmrPort,
+  derivePaperclipViteHmrPort,
+  buildRuntimeExposureUrl,
+  buildRuntimeExposureHealthUrl,
+} from "./runtime-exposure/ports.js";
+export {
+  RUNTIME_EXPOSURE_BIND_MODE,
+  RUNTIME_EXPOSURE_BIND_HOST,
+  commandSelectsBindMode,
+  forceLoopbackBindInCommand,
+  isPaperclipDevRunnerCommand,
+  rewriteUrlHostToLoopback,
+} from "./runtime-exposure/loopback-bind.js";
