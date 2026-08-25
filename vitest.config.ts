@@ -16,6 +16,7 @@ export default defineConfig({
       "packages/adapters/crush-local",
       "packages/adapters/kilocode-local",
       "packages/adapters/mimo-local",
+      "packages/adapters/kimi-local",
       "packages/adapters/openclaw-gateway",
       "packages/adapters/opencode-local",
       "packages/adapters/pi-local",
