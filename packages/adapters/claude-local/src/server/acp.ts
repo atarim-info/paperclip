@@ -48,11 +48,12 @@ import {
   classifyThrownErrorClass,
   logSandboxProbeDiagnostic,
 } from "./probe-diagnostics.js";
+import { createWorkspaceRestoreTeardown } from "@paperclipai/adapter-utils/workspace-restore-teardown";
 import { buildLocalAdapterTestProbeEnv } from "./probe-env.js";
 import { detectClaudeLoginRequired, parseClaudeStreamJson } from "./parse.js";
 import { buildClaudeProbePermissionArgs } from "./permissions.js";
 import { ADAPTER_AUTH_MISSING_CHECK_CODE } from "./auth-check.js";
-import { SANDBOX_INSTALL_COMMAND } from "../index.js";
+import { resolveClaudeModel, SANDBOX_INSTALL_COMMAND } from "../index.js";
 
 const moduleDir = path.dirname(fileURLToPath(import.meta.url));
 const packageRootDir = path.resolve(moduleDir, "../..");
@@ -126,7 +127,12 @@ function firstNonEmptyString(...values: unknown[]): string | undefined {
   return undefined;
 }
 
-export function buildClaudeAcpConfig(config: Record<string, unknown>): Record<string, unknown> {
+export function buildClaudeAcpConfig(
+  config: Record<string, unknown>,
+  inheritedEnv: Record<string, unknown> = {},
+): Record<string, unknown> {
+  const env = parseObject(config.env);
+  const model = resolveClaudeModel(config.model, { ...inheritedEnv, ...env });
   const agentCommand = firstNonEmptyString(config.agentCommand, config.acpAgentCommand);
   const stateDir = firstNonEmptyString(config.stateDir, config.acpStateDir);
   const mode = firstNonEmptyString(config.mode, config.acpMode) ?? DEFAULT_ACP_ENGINE_MODE;
@@ -143,6 +149,9 @@ export function buildClaudeAcpConfig(config: Record<string, unknown>): Record<st
 
   return {
     ...config,
+    model,
+    // ACP reads ANTHROPIC_MODEL at startup; keep it aligned with CLI precedence.
+    ...(model ? { env: { ...env, ANTHROPIC_MODEL: model } } : {}),
     agent: "claude",
     mode,
     permissionMode,
@@ -215,19 +224,13 @@ async function prepareClaudeRemoteManagedHome(
   // the host. A restore miss is logged and never fails the run.
   const registerWorkspaceSyncBack = (
     stagedRuntime: AcpxRemoteManagedHomeResult["stagedRuntime"],
-  ): AcpxRemoteManagedHomeResult["teardown"] => async () => {
-    try {
-      await onLog("stdout", "[paperclip] Restoring workspace changes from the sandbox.\n");
-      await stagedRuntime.restoreWorkspace((line) => onLog("stdout", line));
-    } catch (err) {
-      await onLog(
-        "stderr",
-        `[paperclip] Claude ACP teardown workspace restore failed: ${
-          err instanceof Error ? err.message : String(err)
-        }\n`,
-      );
-    }
-  };
+  ): AcpxRemoteManagedHomeResult["teardown"] =>
+    createWorkspaceRestoreTeardown({
+      stagedRuntime,
+      onLog,
+      startMessage: "[paperclip] Restoring workspace changes from the sandbox.\n",
+      failurePrefix: "[paperclip] Claude ACP teardown workspace restore failed",
+    });
   const envConfig = parseObject(input.config.env);
   const explicitClaudeConfigDir =
     typeof envConfig.CLAUDE_CONFIG_DIR === "string" && envConfig.CLAUDE_CONFIG_DIR.trim().length > 0
@@ -354,9 +357,13 @@ export function createClaudeAcpExecutor(options: ClaudeAcpExecutorOptions = {}):
       currentExecutor = createAcpxEngineExecutor(withClaudeAcpDefaults(options));
       executor = currentExecutor;
     }
+    const target = readAdapterExecutionTarget({
+      executionTarget: ctx.executionTarget,
+      legacyRemoteExecution: ctx.executionTransport?.remoteExecution,
+    });
     const result = await currentExecutor({
       ...ctx,
-      config: buildClaudeAcpConfig(ctx.config),
+      config: buildClaudeAcpConfig(ctx.config, target?.kind === "remote" ? {} : process.env),
     });
     return mapClaudeAcpAuthErrorCode(result);
   };

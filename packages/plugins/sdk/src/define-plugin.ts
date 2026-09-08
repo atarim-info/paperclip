@@ -55,6 +55,8 @@ import type {
   PluginEnvironmentDestroyLeaseParams,
   PluginEnvironmentExecuteParams,
   PluginEnvironmentExecuteResult,
+  PluginEnvironmentRunnerIngressEndpointParams,
+  PluginEnvironmentRunnerIngressEndpoint,
   PluginEnvironmentSyncInParams,
   PluginEnvironmentSyncOutParams,
   PluginEnvironmentSyncResult,
@@ -399,6 +401,11 @@ export interface PluginDefinition {
     params: PluginEnvironmentExecuteParams,
   ): Promise<PluginEnvironmentExecuteResult>;
 
+  /** Return an authenticated private WebSocket ingress for runnerd. */
+  onEnvironmentRunnerIngressEndpoint?(
+    params: PluginEnvironmentRunnerIngressEndpointParams,
+  ): Promise<PluginEnvironmentRunnerIngressEndpoint>;
+
   /**
    * Optional, opt-in: called before execution to place host files/directories at
    * target sandbox paths using a provider-native transport instead of the default
@@ -478,6 +485,8 @@ export interface PluginDefinition {
    * and the exit through worker→host notifications, never as a reply. Defining
    * the four `onDuplexChannel*` hooks advertises the four methods. The host reads
    * the open verb to gate the `duplexCommandStream` capability.
+   *
+   * HTTP/2 is the preferred transport. `queue_v1` is the soft-deprecated fallback.
    */
   onDuplexChannelOpen?(
     params: PluginDuplexChannelOpenParams,

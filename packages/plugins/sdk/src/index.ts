@@ -86,6 +86,8 @@ export {
   LOGIN_PTY_EXIT_NOTIFICATION,
   DUPLEX_CHANNEL_DATA_NOTIFICATION,
   DUPLEX_CHANNEL_EXIT_NOTIFICATION,
+  encodeChannelBytes,
+  decodeChannelBytes,
   _resetIdCounter,
 } from "./protocol.js";
 
@@ -186,6 +188,8 @@ export type {
   PluginEnvironmentRealizeWorkspaceResult,
   PluginEnvironmentExecuteParams,
   PluginEnvironmentExecuteResult,
+  PluginEnvironmentRunnerIngressEndpointParams,
+  PluginEnvironmentRunnerIngressEndpoint,
   PluginSyncFileMapping,
   PluginPostUploadCommand,
   PluginSyncOperation,
@@ -386,6 +390,12 @@ export type {
   PluginApiRouteMethod,
   PluginEventType,
   PluginBridgeErrorCode,
+  ConnectionIntentInteraction,
+  ConnectionIntentPayload,
+  ConnectionIntentResult,
+  ConnectionIntentSetupOptions,
+  ConnectionRequestResult,
+  ConnectionsSearchResult,
 } from "./types.js";
 
 // ---------------------------------------------------------------------------
