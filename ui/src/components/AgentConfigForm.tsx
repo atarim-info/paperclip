@@ -1642,7 +1642,6 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
                   </Field>
                 </div>
               )}
-              )}
 
               <ModelDropdown
                 models={models}
