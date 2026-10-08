@@ -1,0 +1,6 @@
+springbootelasticsearch:
+  image: springboot-elasticsearch
+  depends_on:
+    - elasticsearch
+  environment:
+    - SPRING_ELASTICSEARCH_REST_URIS=http://elasticsearch:9200

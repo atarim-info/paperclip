@@ -42,6 +42,7 @@ export const LEGACY_SESSIONED_ADAPTER_TYPES = new Set([
   "cursor_cloud",
   "cursor",
   "gemini_local",
+  "grok_local",
   "hermes_local",
   "crush_local",
   "kilocode_local",
@@ -77,9 +78,6 @@ export const ADAPTER_SESSION_MANAGEMENT: Record<string, AdapterSessionManagement
     nativeContextManagement: "unknown",
     defaultSessionCompaction: DEFAULT_SESSION_COMPACTION_POLICY,
   },
-  // Freebuff can resume a conversation with `--continue <id>`, but this
-  // adapter does not drive resume yet (see its design doc), so Paperclip must
-  // not assume a session carries across runs.
   freebuff_local: {
     supportsSessionResume: false,
     nativeContextManagement: "unknown",
@@ -96,6 +94,11 @@ export const ADAPTER_SESSION_MANAGEMENT: Record<string, AdapterSessionManagement
     defaultSessionCompaction: DEFAULT_SESSION_COMPACTION_POLICY,
   },
   mimo_local: {
+    supportsSessionResume: true,
+    nativeContextManagement: "unknown",
+    defaultSessionCompaction: DEFAULT_SESSION_COMPACTION_POLICY,
+  },
+  grok_local: {
     supportsSessionResume: true,
     nativeContextManagement: "unknown",
     defaultSessionCompaction: DEFAULT_SESSION_COMPACTION_POLICY,

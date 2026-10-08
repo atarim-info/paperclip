@@ -1,0 +1,16 @@
+Script started on 2026-09-22 23:33:00+03:00 [COMMAND="scripts/paperclip-issue-update.sh --issue-id "5dd957c0-4356-4caa-be4d-74a82fb27cb4" --status "in_review"" <not executed on terminal>]
+## Board Review Requested
+
+- **PR**: [39](https://github.com/atarim-info/backoffice/pull/39) (ATA-703-query-api-audit-log-migration)
+- **Review status**: Code Reviewer/Guardian approved via Paperclip
+- **Board approval needed**: Yes
+
+Implementation complete. Code review approved. Branch mergeable to main.
+
+**Pending approvals**:
+- [Approve ATA-703: Query API + /admin/audit-log migration (PR #39)](/ATA/approvals/58128495-2a55-4070-a553-2aca61c83422)
+- [Merge ATA-703: Query API + /admin/audit-log migration (PR #39)](/ATA/approvals/3231c51a-acef-41dd-bbde-c1ebc960e1b1)
+Issue update rejected (HTTP 403).
+{"error":"Cross-issue writes need a run to attribute them to (Heartbeat run context). Every agent comment and task update is attributed to a heartbeat run so the cross-issue cap can be counted and the audit trail can name who acted for whom. This request arrived without a valid run, so it could not be contained. Who can act: this agent, once the request carries its own run id. Try this: Send the `X-Paperclip-Run-Id` header with your current run (`$PAPERCLIP_RUN_ID`) and retry.","code":"cross_issue_influence_run_context_required","details":{"code":"cross_issue_influence_run_context_required","boundary":"Heartbeat run context","whoCanAct":"this agent, once the request carries its own run id.","sanctionedPath":"Send the `X-Paperclip-Run-Id` header with your current run (`$PAPERCLIP_RUN_ID`) and retry."}}
+
+Script done on 2026-09-22 23:33:02+03:00 [COMMAND_EXIT_CODE="1"]

@@ -1,3 +1,11 @@
+import { isLockedIssueStub } from "@/components/LockedIssueChip";
+import { IssuePullRequestLinks } from "../IssuePullRequestLinks";
+import { useIssueWorkProducts } from "../../hooks/useIssueWorkProducts";
+import { getIssuePullRequests, pullRequestHref, pullRequestIdentity } from "../../lib/issue-pull-requests";
+import { useWorkspaceIsolationControls } from "@/hooks/useWorkspaceIsolationControls";
+import { AgentIdentity } from "@/components/AgentIdentity";
+import { AgentAvatar } from "@/components/AgentAvatar";
+import { normalizeLegacyRunnerProvider } from "@paperclipai/adapter-utils";
 import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType } from "react";
 import { createPortal } from "react-dom";
 import { PROPERTIES_PANE_HEADER_SLOT_ID } from "../PropertiesPanel";
@@ -35,7 +43,7 @@ import {
   trackRecentAssignee,
   trackRecentAssigneeUser,
 } from "../../lib/recent-assignees";
-import { getRecentProjectIds, trackRecentProject } from "../../lib/recent-projects";
+import { getRecentProjectIds } from "../../lib/recent-projects";
 import { orderItemsBySelectedAndRecent } from "../../lib/recent-selections";
 import { formatAssigneeUserLabel, formatUserLabel } from "../../lib/assignees";
 import { buildExecutionPolicy, stageParticipantValues } from "../../lib/issue-execution-policy";
@@ -77,7 +85,6 @@ import {
 import { IssuePropertiesPlansTab } from "./IssuePropertiesPlansTab";
 import { IssuePropertiesArtifactsTab } from "./IssuePropertiesArtifactsTab";
 import { User, ArrowUpRight, Plus, X, GitBranch, FolderOpen, HardDrive, Check, Clock, RotateCcw, Loader2, CheckCircle2, ArchiveRestore, ChevronLeft } from "lucide-react";
-import { AgentIcon } from "../AgentIconPicker";
 import { InlineEntitySelector, type InlineEntityOption } from "../InlineEntitySelector";
 import {
   AssigneeRunningBanner,
@@ -292,11 +299,12 @@ export function IssueProperties({
     queryFn: () => issuesApi.listAttachments(issue.id),
     enabled: taskChatShellEnabled,
   });
-  const { data: paneTabWorkProducts } = useQuery({
-    queryKey: queryKeys.issues.workProducts(issue.id),
-    queryFn: () => issuesApi.listWorkProducts(issue.id),
-    enabled: taskChatShellEnabled,
-  });
+  const { data: paneTabWorkProducts, isError: workProductsError, refetch: refetchWorkProducts } = useIssueWorkProducts(issue.id);
+  const pullRequests = useMemo(() => getIssuePullRequests(paneTabWorkProducts), [paneTabWorkProducts]);
+  const remainingExternalObjects = useMemo(() => {
+    const identities = new Set(pullRequests.map((product) => pullRequestIdentity(pullRequestHref(product))).filter(Boolean));
+    return externalObjects?.filter((entry) => !identities.has(pullRequestIdentity(entry.pill.url)));
+  }, [externalObjects, pullRequests]);
   const { data: paneTabDocuments } = useIssueDocuments(taskChatShellEnabled ? issue.id : null);
   // Proxy `artifact-review-*` documents surface only through their Work
   // product row, so they must not summon the Plan or Documents surfaces.
@@ -528,7 +536,8 @@ export function IssueProperties({
     ? orderedProjects.find((project) => project.id === issue.projectId) ?? null
     : null;
   const issueProject = issue.project ?? currentProject;
-  const workspacePickerEligible = experimentalSettings?.enableIsolatedWorkspaces === true
+  const { visible: workspaceIsolationControlsVisible } = useWorkspaceIsolationControls();
+  const workspacePickerEligible = workspaceIsolationControlsVisible && experimentalSettings?.enableIsolatedWorkspaces === true
     && Boolean(issueProject?.executionWorkspacePolicy?.enabled);
   const {
     data: reusableExecutionWorkspaces,
@@ -740,12 +749,13 @@ export function IssueProperties({
   );
   const assigneeOverrideChrome = assigneeAdapterType === "claude_local"
     && assigneeOverrideAdapterConfig.chrome === true;
+  const catalogProvider = assigneeAdapterType === "paperclip_runner" ? String(normalizeLegacyRunnerProvider(assigneePrimaryAdapterConfig).provider ?? "codex") : undefined;
   const { data: assigneeAdapterModels } = useQuery({
     queryKey:
       companyId && assigneeAdapterType
-        ? queryKeys.agents.adapterModels(companyId, assigneeAdapterType)
+        ? queryKeys.agents.adapterModels(companyId, assigneeAdapterType, null, catalogProvider)
         : ["agents", "none", "adapter-models", assigneeAdapterType ?? "none"],
-    queryFn: () => agentsApi.adapterModels(companyId!, assigneeAdapterType!),
+    queryFn: () => agentsApi.adapterModels(companyId!, assigneeAdapterType!, { provider: catalogProvider }),
     enabled: Boolean(companyId) && showAssigneeAdapterOptions && supportsAssigneeOverrides,
   });
   const modelOverrideOptions = useMemo<InlineEntityOption[]>(() => {
@@ -947,7 +957,7 @@ export function IssueProperties({
   // --- Interrupt-handoff clarity for the assignee picker (design surface 2) ---
   const handoffResolvers: HandoffChipResolvers = useMemo(
     () => ({
-      agentMap: new Map((agents ?? []).map((agent) => [agent.id, { name: agent.name, icon: agent.icon }])),
+      agentMap: new Map((agents ?? []).map((agent) => [agent.id, agent])),
       resolveUserLabel: (id) => userLabel(id),
     }),
     // userLabel closes over userLabelMap + currentUserId, both reflected here.
@@ -1139,7 +1149,7 @@ export function IssueProperties({
     <span className="inline-flex min-w-0 max-w-full items-center gap-1.5 text-sm" title={issue.watchdog.instructions?.trim() || undefined}>
       {(() => {
         const agent = (agents ?? []).find((candidate) => candidate.id === issue.watchdog?.watchdogAgentId);
-        return agent ? <AgentIcon icon={agent.icon} className="h-3.5 w-3.5 shrink-0 text-muted-foreground" /> : null;
+        return agent ? <AgentAvatar agent={agent} size={16} className="h-3.5 w-3.5 shrink-0 text-muted-foreground"/> : null;
       })()}
       <span className="shrink-0 max-w-40 truncate">{agentName(issue.watchdog.watchdogAgentId)}</span>
       {issue.watchdog.instructions?.trim() ? (
@@ -1183,7 +1193,7 @@ export function IssueProperties({
             const agent = (agents ?? []).find((candidate) => candidate.id === option.id);
             return (
               <>
-                {agent ? <AgentIcon icon={agent.icon} className="h-3 w-3 shrink-0 text-muted-foreground" /> : null}
+                {agent ? <AgentAvatar agent={agent} size={16} className="h-3 w-3 shrink-0 text-muted-foreground"/> : null}
                 <span className="truncate">{option.label}</span>
               </>
             );
@@ -1192,7 +1202,7 @@ export function IssueProperties({
             const agent = (agents ?? []).find((candidate) => candidate.id === option.id);
             return (
               <>
-                {agent ? <AgentIcon icon={agent.icon} className="h-3 w-3 shrink-0 text-muted-foreground" /> : null}
+                {agent ? <AgentAvatar agent={agent} size={16} className="h-3 w-3 shrink-0 text-muted-foreground"/> : null}
                 <span className="truncate">{option.label}</span>
               </>
             );
@@ -1532,9 +1542,11 @@ export function IssueProperties({
               ? retryNow.data?.outcome === "already_promoted"
                 ? "Already promoted — run starting"
                 : "Promoted — run starting"
-              : scheduledRetryIsContinuation
-                ? "Pulls continuation forward immediately"
-                : "Pulls retry forward immediately"}
+              : retryNow.data?.outcome === "waiting" && retryNow.data.scheduledRetry?.runId === scheduledRetry.runId
+                ? retryNow.data.message
+                : scheduledRetryIsContinuation
+                  ? "Pulls continuation forward immediately"
+                  : "Pulls retry forward immediately"}
         </span>
       </div>
     </div>
@@ -1689,7 +1701,7 @@ export function IssueProperties({
   );
 
   const assigneeTrigger = assignee ? (
-    <Identity name={assignee.name} size="sm" shape="square" />
+    <AgentIdentity agent={assignee} size="sm" />
   ) : assigneeUserLabel ? (
     <>
       <User className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
@@ -1757,11 +1769,11 @@ export function IssueProperties({
       onClick={() => {
         if (option.kind === "agent") {
           selectAssignee({ assigneeAgentId: option.agent.id, assigneeUserId: null }, option.label, () =>
-            trackRecentAssignee(option.agent.id),
+            trackRecentAssignee(option.agent.id, companyId ?? undefined),
           );
         } else if (option.kind === "user") {
           selectAssignee({ assigneeAgentId: null, assigneeUserId: option.userId }, option.label, () =>
-            trackRecentAssigneeUser(option.userId),
+            trackRecentAssigneeUser(option.userId, companyId ?? undefined),
           );
         } else {
           selectAssignee({ assigneeAgentId: null, assigneeUserId: null }, option.label);
@@ -1769,7 +1781,7 @@ export function IssueProperties({
       }}
     >
       {option.kind === "agent" ? (
-        <AgentIcon icon={option.agent.icon} className="shrink-0 h-3 w-3 text-muted-foreground" />
+        <AgentAvatar agent={option.agent} size={16} className="shrink-0 h-3 w-3 text-muted-foreground"/>
       ) : option.kind === "user" ? (
         <User className="h-3 w-3 shrink-0 text-muted-foreground" />
       ) : null}
@@ -1928,7 +1940,7 @@ export function IssueProperties({
                 )}
                 onClick={() => toggleExecutionParticipant(stageType, encoded)}
               >
-                <AgentIcon icon={agent.icon} className="shrink-0 h-3 w-3 text-muted-foreground" />
+                <AgentAvatar agent={agent} size={16} className="shrink-0 h-3 w-3 text-muted-foreground"/>
                 {agent.name}
               </button>
             );
@@ -1942,7 +1954,7 @@ export function IssueProperties({
       <ProjectTile
         color={issueProject?.color ?? null}
         icon={issueProject?.icon ?? null}
-        size="xs"
+        size="sm"
       />
       <span className="text-sm truncate min-w-0" title={projectName(issue.projectId)}>{projectName(issue.projectId)}</span>
     </>
@@ -1990,13 +2002,12 @@ export function IssueProperties({
               onClick={() => {
                 if (option.kind === "project") {
                   const defaultMode = defaultExecutionWorkspaceModeForProject(option.project);
-                  trackRecentProject(option.project.id);
                   onUpdate({
                     projectId: option.project.id,
                     projectWorkspaceId: defaultProjectWorkspaceIdForProject(option.project),
                     executionWorkspaceId: null,
-                    executionWorkspacePreference: defaultMode,
-                    executionWorkspaceSettings: option.project.executionWorkspacePolicy?.enabled
+                    executionWorkspacePreference: workspaceIsolationControlsVisible ? defaultMode : null,
+                    executionWorkspaceSettings: workspaceIsolationControlsVisible && option.project.executionWorkspacePolicy?.enabled
                       ? { mode: defaultMode }
                       : null,
                   });
@@ -2044,13 +2055,15 @@ export function IssueProperties({
   const blockedByTrigger = blockedByRelations.length > 0 ? (
     <div className="flex min-w-0 flex-col items-start gap-1">
       {blockedByRelations.slice(0, 2).map((relation) => (
-        <PropertyChip key={relation.id}>
-          {relation.identifier ?? relation.title}
-        </PropertyChip>
+        <IssueReferencePill
+          key={relation.id}
+          issue={relation}
+          onRemove={(id) => onUpdate({ blockedByIssueIds: blockedByIds.filter((candidate) => candidate !== id) })}
+        />
       ))}
       {blockedByRelations.length > 2 ? (
-        <Badge variant="outline" className="border-border text-muted-foreground">
-          +{blockedByRelations.length - 2} more
+        <Badge asChild variant="outline" className="border-border text-muted-foreground hover:bg-accent/50">
+          <button type="button" onClick={() => setBlockedByOpen(true)}>+{blockedByRelations.length - 2} more</button>
         </Badge>
       ) : null}
     </div>
@@ -2060,13 +2073,11 @@ export function IssueProperties({
   const subtasksTrigger = childIssues.length > 0 ? (
     <div className="flex min-w-0 flex-col items-start gap-1">
       {childIssues.slice(0, 2).map((child) => (
-        <PropertyChip key={child.id}>
-          {child.identifier ?? child.title}
-        </PropertyChip>
+        <IssueReferencePill variant="property" key={child.id} issue={child} className="min-w-0 max-w-full" />
       ))}
       {childIssues.length > 2 ? (
-        <Badge variant="outline" className="border-border text-muted-foreground">
-          +{childIssues.length - 2} more
+        <Badge asChild variant="outline" className="border-border text-muted-foreground hover:bg-accent/50">
+          <button type="button" onClick={() => setSubtasksOpen(true)}>+{childIssues.length - 2} more</button>
         </Badge>
       ) : null}
     </div>
@@ -2101,28 +2112,23 @@ export function IssueProperties({
     if (!issue.parentId) return null;
     return allIssues?.find((candidate) => candidate.id === issue.parentId) ?? null;
   }, [allIssues, issue.parentId]);
-  const parentIdentifier = issue.ancestors?.[0]?.identifier ?? currentParentIssue?.identifier;
-  const parentTitle = issue.ancestors?.[0]?.title ?? currentParentIssue?.title ?? issue.parentId?.slice(0, 8);
+  const parentAncestor = issue.ancestors?.find((ancestor) => ancestor.id === issue.parentId);
+  const parentIdentifier = parentAncestor?.identifier ?? currentParentIssue?.identifier;
+  const parentTitle = parentAncestor?.title ?? currentParentIssue?.title ?? issue.parentId?.slice(0, 8);
   const parentTrigger = issue.parentId ? (
-    <span
-      className="text-sm truncate min-w-0"
-      title={`${parentIdentifier ? `${parentIdentifier} ` : ""}${parentTitle ?? ""}`.trim()}
-    >
-      {parentIdentifier ? `${parentIdentifier} ` : ""}
-      {parentTitle}
-    </span>
+    <IssueReferencePill
+      variant="property"
+      issue={isLockedIssueStub(parentAncestor) ? parentAncestor : {
+        id: issue.parentId,
+        identifier: parentIdentifier ?? issue.parentId,
+        title: parentTitle ?? "Parent task",
+        status: parentAncestor?.status ?? currentParentIssue?.status,
+      }}
+      className="min-w-0 max-w-full"
+    />
   ) : (
     <span className="text-sm text-muted-foreground">None</span>
   );
-  const parentLink = issue.parentId ? (
-    <Link
-      to={`/issues/${parentIdentifier ?? issue.parentId}`}
-      className="inline-flex items-center justify-center h-5 w-5 rounded hover:bg-accent/50 transition-colors text-muted-foreground hover:text-foreground"
-      onClick={(e) => e.stopPropagation()}
-    >
-      <ArrowUpRight className="h-3 w-3" />
-    </Link>
-  ) : undefined;
   const parentSearchActive = normalizedParentSearch.length > 0;
   // When the user types, search on the server. The default list caps at 500 rows
   // and sorts priority-first, so a medium-priority or low-priority match past that
@@ -2336,7 +2342,8 @@ export function IssueProperties({
         <PropertyRow label="Status">
           <StatusIcon
             status={issue.status}
-            size="lg"
+            externalConversationState={issue.externalConversationState}
+            glyphContainerClassName="inline-flex size-6 shrink-0 items-center justify-center"
             blockerAttention={issue.blockerAttention}
             onChange={(status) => onUpdate({ status })}
             showLabel
@@ -2436,7 +2443,7 @@ export function IssueProperties({
           triggerContent={parentTrigger}
           triggerClassName="min-w-0 max-w-full"
           popoverClassName="w-72"
-          extra={parentLink}
+          separateTrigger={!!issue.parentId}
         >
           {parentContent}
         </PropertyPicker>
@@ -2450,6 +2457,7 @@ export function IssueProperties({
               setBlockedByOpen(open);
               if (!open) setBlockedBySearch("");
             }}
+            separateTrigger={blockedByRelations.length > 0}
             triggerContent={blockedByTrigger}
             triggerClassName="min-w-0 max-w-full"
             popoverClassName="w-72"
@@ -2515,7 +2523,7 @@ export function IssueProperties({
           {blockingIssues.length > 0 ? (
             <div className="flex flex-col items-start gap-1.5">
               {visibleBlockingIssues.map((relation) => (
-                <IssueReferencePill key={relation.id} issue={relation} />
+                <IssueReferencePill variant="property" key={relation.id} issue={relation} />
               ))}
               <ExpandRelationListButton
                 hiddenCount={hiddenBlockingIssueCount}
@@ -2534,6 +2542,7 @@ export function IssueProperties({
             label="Subtasks"
             open={subtasksOpen}
             onOpenChange={setSubtasksOpen}
+            separateTrigger={childIssues.length > 0}
             triggerContent={subtasksTrigger}
             triggerClassName="min-w-0 max-w-full"
             popoverClassName="w-72"
@@ -2581,8 +2590,20 @@ export function IssueProperties({
           </PropertyRow>
         ) : null}
 
+        {pullRequests.length > 0 || workProductsError ? (
+          <PropertyRow label="Pull requests" wrap>
+            <div className="flex min-w-0 flex-col gap-2">
+              <IssuePullRequestLinks products={pullRequests} externalObjects={externalObjects?.map((entry) => entry.pill)} />
+              {workProductsError ? (
+                <span className="text-xs text-muted-foreground">
+                  Couldn’t load pull requests. <button type="button" className="text-primary hover:underline" onClick={() => void refetchWorkProducts()}>Retry</button>
+                </span>
+              ) : null}
+            </div>
+          </PropertyRow>
+        ) : null}
         <ExternalObjectRows
-          externalObjects={externalObjects}
+          externalObjects={remainingExternalObjects}
           externalObjectsLoading={externalObjectsLoading}
           externalObjectsError={externalObjectsError}
           onRetryExternalObjects={onRetryExternalObjects}
@@ -2644,7 +2665,11 @@ export function IssueProperties({
           </PropertyRow>
         )}
 
-        {showScheduledRetryRow && scheduledRetryContent ? (
+        {showScheduledRetryRow && scheduledRetry?.scheduledRetryReason === "workspace_busy" ? (
+          <PropertyRow label="Workspace">
+            <span className="text-sm text-muted-foreground">Waiting for workspace</span>
+          </PropertyRow>
+        ) : showScheduledRetryRow && scheduledRetryContent ? (
           <PropertyPicker
             inline={inline}
             label="Scheduled retry"
@@ -2875,11 +2900,7 @@ export function IssueProperties({
                 to={`/agents/${originatingActor.id}`}
                 className="hover:underline"
               >
-                <Identity
-                  name={agentName(originatingActor.id) ?? originatingActor.id.slice(0, 8)}
-                  size="sm"
-                  shape="square"
-                />
+                <AgentIdentity agent={agents?.find((agent) => agent.id === originatingActor.id) ?? { id: originatingActor.id, name: agentName(originatingActor.id) ?? "Agent" }} size="sm" />
               </Link>
             ) : (
               <span className="flex min-w-0 items-center gap-1.5">
@@ -2943,7 +2964,7 @@ export function IssueProperties({
                     title={`Archived by ${archivedByName} · ${formatDateTime(issue.archivedAt)}`}
                   >
                     {archivedByAgent
-                      ? <AgentIcon icon={archivedByAgent.icon} className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                      ? <AgentAvatar agent={archivedByAgent} size={16} className="h-3.5 w-3.5 shrink-0 text-muted-foreground"/>
                       : null}
                     <span className="min-w-0 truncate">
                       {archivedByName}
