@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "packageName": "@paperclipai/skills-catalog",
   "packageVersion": "0.3.1",
-  "generatedAt": "2026-10-06T01:21:47.421Z",
+  "generatedAt": "2026-10-08T17:28:39.654Z",
   "skills": [
     {
       "id": "paperclipai:bundled:docs:doc-maintenance",
@@ -557,6 +557,42 @@
         }
       ],
       "contentHash": "sha256:276d85e98a4732f278204e26438aa95fde158dd2d15c1e427c4c7c7d492e769d"
+    },
+    {
+      "id": "paperclipai:optional:legal:contract-review",
+      "key": "paperclipai/optional/legal/contract-review",
+      "kind": "optional",
+      "category": "legal",
+      "slug": "contract-review",
+      "name": "contract-review",
+      "description": "Review standard inbound agreements, identify liability, indemnity, and IP risk clauses, and compare terms against standard company playbooks.",
+      "path": "catalog/optional/legal/contract-review",
+      "entrypoint": "SKILL.md",
+      "trustLevel": "markdown_only",
+      "compatibility": "compatible",
+      "defaultInstall": false,
+      "recommendedForRoles": [
+        "legal",
+        "founder",
+        "exec"
+      ],
+      "requires": [],
+      "tags": [
+        "legal",
+        "contracts",
+        "nda",
+        "msa",
+        "compliance"
+      ],
+      "files": [
+        {
+          "path": "SKILL.md",
+          "kind": "skill",
+          "sizeBytes": 1382,
+          "sha256": "7dbe2044353dabaf3799f04a5299feeef1495b70dde72968542bd60f06abe94b"
+        }
+      ],
+      "contentHash": "sha256:c9082cc028977e695bcc2c9f03b76c2e845db7508c377892926472dba10db16f"
     },
     {
       "id": "paperclipai:optional:product:design-critique",
@@ -1115,6 +1151,41 @@
       }
     },
     {
+      "id": "paperclipai:optional:sales:lead-qualification",
+      "key": "paperclipai/optional/sales/lead-qualification",
+      "kind": "optional",
+      "category": "sales",
+      "slug": "lead-qualification",
+      "name": "lead-qualification",
+      "description": "Qualify inbound leads against ideal customer profile (ICP), score intent, and draft discovery questions for sales outreach.",
+      "path": "catalog/optional/sales/lead-qualification",
+      "entrypoint": "SKILL.md",
+      "trustLevel": "markdown_only",
+      "compatibility": "compatible",
+      "defaultInstall": false,
+      "recommendedForRoles": [
+        "sales",
+        "founder",
+        "pm"
+      ],
+      "requires": [],
+      "tags": [
+        "sales",
+        "leads",
+        "qualification",
+        "icp"
+      ],
+      "files": [
+        {
+          "path": "SKILL.md",
+          "kind": "skill",
+          "sizeBytes": 1312,
+          "sha256": "42fcc53dd9382b4ebec19740cac2746456ab49425ac6a59228f78aaea908aa9f"
+        }
+      ],
+      "contentHash": "sha256:bdbf69796ba6b1065a43618d4b24b595d00d70b553dfe822b5f846fe4ee7b174"
+    },
+    {
       "id": "paperclipai:optional:software-development:prepare-mcp-integration",
       "key": "paperclipai/optional/software-development/prepare-mcp-integration",
       "kind": "optional",
@@ -1160,6 +1231,41 @@
         }
       ],
       "contentHash": "sha256:84f2a28d7d004393719684f2b435e5ee01ddc58591e0dfeb73d72c7605db7f49"
+    },
+    {
+      "id": "paperclipai:optional:support:ticket-triage",
+      "key": "paperclipai/optional/support/ticket-triage",
+      "kind": "optional",
+      "category": "support",
+      "slug": "ticket-triage",
+      "name": "ticket-triage",
+      "description": "Classify incoming support tickets, assign priority levels based on customer impact, and draft empathetic troubleshooting responses.",
+      "path": "catalog/optional/support/ticket-triage",
+      "entrypoint": "SKILL.md",
+      "trustLevel": "markdown_only",
+      "compatibility": "compatible",
+      "defaultInstall": false,
+      "recommendedForRoles": [
+        "support",
+        "engineer",
+        "pm"
+      ],
+      "requires": [],
+      "tags": [
+        "support",
+        "triage",
+        "tickets",
+        "customer-service"
+      ],
+      "files": [
+        {
+          "path": "SKILL.md",
+          "kind": "skill",
+          "sizeBytes": 1353,
+          "sha256": "582a91dd048d7d5391a7900c9fa745d76fa017d56ffaf4d2e03f944e2d0935d5"
+        }
+      ],
+      "contentHash": "sha256:da77076cb4c77ec7b8ca020d93544a28da639a1ad9078c9591ab47cf1307354b"
     }
   ]
 }
