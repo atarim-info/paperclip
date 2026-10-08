@@ -1,5 +1,3 @@
-import type { AdapterModelProfileDefinition } from "@paperclipai/adapter-utils";
-
 export const type = "kilocode_local";
 export const label = "Kilo Code (local)";
 
@@ -31,34 +29,6 @@ export const models: Array<{ id: string; label: string }> = [
   { id: "kilo/~openai/gpt-latest", label: "kilo/~openai/gpt-latest" },
   { id: "kilo/~google/gemini-flash-latest", label: "kilo/~google/gemini-flash-latest" },
 ];
-
-export const DEFAULT_KILO_CHEAP_MODEL = "kilo/anthropic/claude-haiku-4.5";
-
-// The "cheap" budget profile (used for recovery retries and other low-cost
-// lanes). Defaults to Kilo's Haiku model, overridable via
-// PAPERCLIP_KILO_CHEAP_MODEL (falling back to PAPERCLIP_KILO_SMALL_MODEL) so a
-// gateway-routed deployment can repoint the budget lane at a served model.
-//
-// This module is shared client/server code (the UI imports it for
-// DEFAULT_KILO_LOCAL_MODEL etc.), so it must not touch the global `process`
-// unguarded: in the browser a bare `process.env` throws at module load. Guard
-// with `typeof process` and fall back to an empty env.
-export function buildKiloModelProfiles(
-  env: NodeJS.ProcessEnv = typeof process === "undefined" ? {} : process.env,
-): AdapterModelProfileDefinition[] {
-  const override = (env.PAPERCLIP_KILO_CHEAP_MODEL ?? env.PAPERCLIP_KILO_SMALL_MODEL)?.trim();
-  return [
-    {
-      key: "cheap",
-      label: "Cheap",
-      description: "Budget lane model for recovery retries and other low-cost tasks.",
-      adapterConfig: { model: override || DEFAULT_KILO_CHEAP_MODEL },
-      source: "adapter_default",
-    },
-  ];
-}
-
-export const modelProfiles: AdapterModelProfileDefinition[] = buildKiloModelProfiles();
 
 export const agentConfigurationDoc = `# kilocode_local agent configuration
 

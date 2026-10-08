@@ -1,5 +1,3 @@
-import type { AdapterModelProfileDefinition } from "@paperclipai/adapter-utils";
-
 export const type = "mimo_local";
 export const label = "MiMo (local)";
 
@@ -39,34 +37,6 @@ export const models: Array<{ id: string; label: string }> = [
   { id: "xiaomi/mimo-v2.5-pro-ultraspeed", label: "xiaomi/mimo-v2.5-pro-ultraspeed" },
   { id: "mimo/mimo-auto", label: "mimo/mimo-auto" },
 ];
-
-export const DEFAULT_MIMO_CHEAP_MODEL = "xiaomi/mimo-v2.5";
-
-// The "cheap" budget profile (used for recovery retries and other low-cost
-// lanes). Defaults to the base MiMo model, overridable via
-// PAPERCLIP_MIMO_CHEAP_MODEL (falling back to PAPERCLIP_MIMO_SMALL_MODEL) so a
-// gateway-routed deployment can repoint the budget lane at a served model.
-//
-// This module is shared client/server code (the UI imports it for
-// DEFAULT_MIMO_LOCAL_MODEL etc.), so it must not touch the global `process`
-// unguarded: in the browser a bare `process.env` throws at module load. Guard
-// with `typeof process` and fall back to an empty env.
-export function buildMimoModelProfiles(
-  env: NodeJS.ProcessEnv = typeof process === "undefined" ? {} : process.env,
-): AdapterModelProfileDefinition[] {
-  const override = (env.PAPERCLIP_MIMO_CHEAP_MODEL ?? env.PAPERCLIP_MIMO_SMALL_MODEL)?.trim();
-  return [
-    {
-      key: "cheap",
-      label: "Cheap",
-      description: "Budget lane model for recovery retries and other low-cost tasks.",
-      adapterConfig: { model: override || DEFAULT_MIMO_CHEAP_MODEL },
-      source: "adapter_default",
-    },
-  ];
-}
-
-export const modelProfiles: AdapterModelProfileDefinition[] = buildMimoModelProfiles();
 
 export const agentConfigurationDoc = `# mimo_local agent configuration
 

@@ -3,10 +3,7 @@ import {
   type,
   label,
   models,
-  modelProfiles,
   isValidCrushModelId,
-  buildCrushModelProfiles,
-  DEFAULT_CRUSH_CHEAP_MODEL,
 } from "./index.js";
 
 describe("crush-local index", () => {
@@ -26,15 +23,5 @@ describe("crush-local index", () => {
   it("ships a non-empty static fallback list", () => {
     expect(models.length).toBeGreaterThan(0);
     expect(models.every((m) => m.id && m.label)).toBe(true);
-  });
-
-  it("builds a cheap profile that sets the model", () => {
-    expect(modelProfiles[0].key).toBe("cheap");
-    expect(modelProfiles[0].adapterConfig).toEqual({ model: DEFAULT_CRUSH_CHEAP_MODEL });
-  });
-
-  it("honors PAPERCLIP_CRUSH_CHEAP_MODEL override", () => {
-    const profiles = buildCrushModelProfiles({ PAPERCLIP_CRUSH_CHEAP_MODEL: "openai/gpt-5.4-mini" });
-    expect(profiles[0].adapterConfig).toEqual({ model: "openai/gpt-5.4-mini" });
   });
 });

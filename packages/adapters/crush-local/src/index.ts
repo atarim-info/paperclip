@@ -1,5 +1,3 @@
-import type { AdapterModelProfileDefinition } from "@paperclipai/adapter-utils";
-
 export const type = "crush_local";
 export const label = "Crush (local)";
 
@@ -19,27 +17,6 @@ export const models: Array<{ id: string; label: string }> = [
   { id: "openai/gpt-5.2-codex", label: "openai/gpt-5.2-codex" },
   { id: "openai/gpt-5.4", label: "openai/gpt-5.4" },
 ];
-
-export const DEFAULT_CRUSH_CHEAP_MODEL = "anthropic/claude-haiku-4-5-20251001";
-
-// Shared client/server module: must not touch `process` unguarded (the UI
-// imports it, and a bare `process.env` throws in the browser at module load).
-export function buildCrushModelProfiles(
-  env: NodeJS.ProcessEnv = typeof process === "undefined" ? {} : process.env,
-): AdapterModelProfileDefinition[] {
-  const override = env.PAPERCLIP_CRUSH_CHEAP_MODEL?.trim();
-  return [
-    {
-      key: "cheap",
-      label: "Cheap",
-      description: "Budget lane model for recovery retries and other low-cost tasks.",
-      adapterConfig: { model: override || DEFAULT_CRUSH_CHEAP_MODEL },
-      source: "adapter_default",
-    },
-  ];
-}
-
-export const modelProfiles: AdapterModelProfileDefinition[] = buildCrushModelProfiles();
 
 export const agentConfigurationDoc = `# crush_local agent configuration
 

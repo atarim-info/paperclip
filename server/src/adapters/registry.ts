@@ -131,7 +131,7 @@ import {
 import {
   agentConfigurationDoc as crushAgentConfigurationDoc,
   models as crushModels,
-  modelProfiles as crushModelProfiles,
+
 } from "@paperclipai/adapter-crush-local";
 import {
   execute as kiloExecute,
@@ -144,7 +144,7 @@ import {
 import {
   agentConfigurationDoc as kiloAgentConfigurationDoc,
   models as kiloModels,
-  modelProfiles as kiloModelProfiles,
+
 } from "@paperclipai/adapter-kilocode-local";
 import {
   execute as mimoExecute,
@@ -157,7 +157,7 @@ import {
 import {
   agentConfigurationDoc as mimoAgentConfigurationDoc,
   models as mimoModels,
-  modelProfiles as mimoModelProfiles,
+
 } from "@paperclipai/adapter-mimo-local";
 import {
   execute as openclawGatewayExecute,
@@ -912,7 +912,7 @@ const crushLocalAdapter: ServerAdapterModule = {
   syncSkills: syncCrushSkills,
   sessionCodec: crushSessionCodec,
   models: crushModels,
-  modelProfiles: crushModelProfiles,
+
   sessionManagement: getAdapterSessionManagement("crush_local") ?? undefined,
   listModels: listCrushModels,
   supportsLocalAgentJwt: true,
@@ -931,7 +931,7 @@ const kilocodeLocalAdapter: ServerAdapterModule = {
   syncSkills: syncKiloSkills,
   sessionCodec: kiloSessionCodec,
   models: kiloModels,
-  modelProfiles: kiloModelProfiles,
+
   sessionManagement: getAdapterSessionManagement("kilocode_local") ?? undefined,
   listModels: listKiloModels,
   supportsLocalAgentJwt: true,
@@ -950,7 +950,7 @@ const mimoLocalAdapter: ServerAdapterModule = {
   syncSkills: syncMimoSkills,
   sessionCodec: mimoSessionCodec,
   models: mimoModels,
-  modelProfiles: mimoModelProfiles,
+
   sessionManagement: getAdapterSessionManagement("mimo_local") ?? undefined,
   listModels: listMimoModels,
   supportsLocalAgentJwt: true,
