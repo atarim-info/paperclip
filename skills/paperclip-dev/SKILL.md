@@ -106,6 +106,32 @@ working tree, so a switch can take the control plane down:
 4. Restart the service afterwards. A long-lived process will not pick up new workspace packages —
    newly added adapters will not register until restart.
 
+## Database Topology — This Machine (Windows host + WSL)
+
+The live board DB is **not** embedded postgres. It is a Docker container on the Windows host:
+
+- Container `pgvector-db` (image `postgres-age-pgvector:18`) publishes `0.0.0.0:5433 -> 5432`,
+  volume `pgvector_pgdata`. It holds the real board database (`paperclip_fork`).
+- WSL reaches it through localhost forwarding at `127.0.0.1:5433`. Port 5433 in WSL is the Windows
+  Docker port; it stops working if Docker Desktop is down or if WSL forwarding is broken (fix with
+  `wsl --shutdown` + restart WSL).
+- `DATABASE_URL` in the repo `.paperclip/.env` (the systemd service's EnvironmentFile) points there.
+  The instance `config.json` still names a stale QNAP target — ignore it; the `.env` is authoritative.
+
+**After any host reboot, "DB unreachable / service crash-loop" almost always means Docker Desktop is
+not running.** Autostart is configured via the HKCU Run key `DockerDesktopAutostart` (Windows side);
+when Docker Desktop starts, `pgvector-db` auto-restarts (restart policy). Sequence to recover:
+start Docker Desktop on Windows, wait, verify WSL→`127.0.0.1:5433` answers, then `systemctl restart
+paperclip` if the service is mid-crash-loop.
+
+The embedded cluster under `~/.paperclip/instances/default/db` is a **stale June-era leftover**
+(roles `paperclip`, no board data). Keep it stopped — do not start it as a proxy for the real DB.
+
+Backups: hourly auto-backups in `~/.paperclip/instances/default/data/backups/`; a manual
+`paperclipai db:backup` writes to that same directory by default. Backups pause whenever the service
+is down, so after an outage the newest one can be >26h old (health `database_backup_stale`) — run a
+manual backup rather than waiting, and verify with `gzip -t` (a killed run can leave a truncated gz).
+
 ## Worktrees
 
 Paperclip worktrees combine git worktrees with isolated Paperclip instances — each gets its own database, server port, and environment seeded from the primary instance.
@@ -316,6 +342,7 @@ lsof -nP -iTCP:<port> -sTCP:LISTEN
 | Mistake | Fix |
 |---------|-----|
 | Server won't start | Run `npx paperclipai doctor --repair` to diagnose and auto-fix |
+| DB unreachable / crash-loop right after a reboot | Docker Desktop is down — start it on Windows, verify WSL `127.0.0.1:5433`, then restart the service (see "Database Topology") |
 | Forgetting to source worktree env | Run `eval "$(npx paperclipai worktree env)"` after cd-ing into the worktree |
 | Stale dependencies after pull | Run `pnpm install && pnpm build` after pulling |
 | Schema out of date after pull | Run `pnpm db:generate && pnpm db:migrate` |
