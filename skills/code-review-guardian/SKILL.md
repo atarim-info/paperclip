@@ -143,14 +143,19 @@ Description template:
 
 Merged PR: <pr-url> (<ISSUE-KEY>)
 
-1. In the `<repo>` checkout run `graphify . --update` (incremental; cheap).
-2. Sync the refreshed output (`graph.json`, `graph.html`, `GRAPH_REPORT.md`,
-   `manifest.json`, `cache/`) to the shared upper-level location
-   `_default/graphify-out/<repo>/` — the shared location, not per-repo git
-   history, is the source of truth.
-3. Do **not** commit `graphify-out/` into the repository (see hard rules in the
+1. At the shared projects root (`/home/vladimir/projects/Projects/paperclip-projects`)
+   run `graphify . --update` (incremental; cheap). Graphify the whole multi-repo
+   workspace once — not a single checkout.
+2. Verify the refreshed shared graph at `graphify-out/` (`graph.json`,
+   `GRAPH_REPORT.md`, `manifest.json`, `cache/`). This single shared `graphify-out/`,
+   which lives outside every repository, is the source of truth. There is **no**
+   per-repo `graphify-out/<repo>/`.
+3. `graph.html` is only auto-written for graphs under the 5000-node viz cap. For
+   larger graphs, emit the aggregated view explicitly:
+   `graphify export html --graph graphify-out/graph.json --labels graphify-out/.graphify_labels.json`.
+4. Do **not** commit `graphify-out/` into any repository (see hard rules in the
    `graphify` skill).
-4. If docs/specs/ADRs changed, ingest the distilled content into LightRAG
+5. If docs/specs/ADRs changed, ingest the distilled content into LightRAG
    (`POST $LIGHTRAG_URL/documents/text` with `file_source` set to the doc path).
 ```
 
