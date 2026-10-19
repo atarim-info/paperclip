@@ -142,20 +142,32 @@ Description template:
 ## Graphify update after merge
 
 Merged PR: <pr-url> (<ISSUE-KEY>)
+Repo: <repo> (checkout: `/home/vladimir/projects/Projects/paperclip-projects/<repo>`)
+Target branch: `main`
+Merge commit: <sha>
 
-1. At the shared projects root (`/home/vladimir/projects/Projects/paperclip-projects`)
-   run `graphify . --update` (incremental; cheap). Graphify the whole multi-repo
-   workspace once — not a single checkout.
-2. Verify the refreshed shared graph at `graphify-out/` (`graph.json`,
+Preconditions — verify before running; if any fails, comment on this task and stop:
+1. The PR is merged with `<repo>`'s base branch `main` (not another branch, not still open).
+2. The `<repo>` checkout at the shared root is on `main` and fast-forwarded
+   (`git -C <root>/<repo> pull --ff-only origin main`). Do not switch branches; report a blocker instead.
+3. Every worktree dir at the root (`<repo>-wt-*`, `<repo>-ATA-*`, `<repo>-ata*`, e.g.
+   `backoffice-ata720p1`, `infrastructure-ATA-229`) is listed in `<root>/.graphifyignore`, so the
+   graph never picks up a feature-branch checkout.
+
+Then:
+4. From the shared projects root (`/home/vladimir/projects/Projects/paperclip-projects`)
+   run `graphify . --update` (incremental; cheap) — the root scan, never a run from
+   inside a checkout or worktree.
+5. Verify the refreshed shared graph at `graphify-out/` (`graph.json`,
    `GRAPH_REPORT.md`, `manifest.json`, `cache/`). This single shared `graphify-out/`,
    which lives outside every repository, is the source of truth. There is **no**
    per-repo `graphify-out/<repo>/`.
-3. `graph.html` is only auto-written for graphs under the 5000-node viz cap. For
+6. `graph.html` is only auto-written for graphs under the 5000-node viz cap. For
    larger graphs, emit the aggregated view explicitly:
    `graphify export html --graph graphify-out/graph.json --labels graphify-out/.graphify_labels.json`.
-4. Do **not** commit `graphify-out/` into any repository (see hard rules in the
+7. Do **not** commit `graphify-out/` into any repository (see hard rules in the
    `graphify` skill).
-5. If docs/specs/ADRs changed, ingest the distilled content into LightRAG
+8. If docs/specs/ADRs changed, ingest the distilled content into LightRAG
    (`POST $LIGHTRAG_URL/documents/text` with `file_source` set to the doc path).
 ```
 

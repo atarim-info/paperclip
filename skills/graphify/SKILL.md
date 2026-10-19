@@ -80,8 +80,8 @@ Agent receives task + graph context
     ↓
 Agent writes / edits / reviews code
     ↓
-[Phase 2] UPDATE — if files were added or significantly changed
-    └── run graphify . --update to keep graph current
+[Phase 2] UPDATE — only after a specific repo's PR merges into `main`
+    └── from the shared root, run graphify . --update (never mid-task on a branch)
 ```
 
 ## Phase 1 — Pre-Task Graph Query
@@ -168,18 +168,18 @@ Use `--update` for routine coding tasks. Reserve full rebuild for:
 - First run after cloning the repo
 - Ghost duplicate nodes (run `graphify extract . --force` to clean)
 
-## Phase 2 — Post-Task Graph Update
+## Phase 2 — Post-Merge Graph Update
 
-After completing a coding task, update the graph if:
-- New files were created
-- Existing files had significant structural changes (new classes, functions, imports)
-- A module was deleted or renamed
+**Do NOT update the graph during a coding task on a branch.** A root-wide `graphify . --update` is broad — the shared root also holds feature-branch worktrees (e.g. `backoffice-ata720p1`, `infrastructure-wt-ata175`, `infrastructure-ATA-229`) that must never enter the graph.
+
+Update only for a **specific repo whose PR is confirmed merged into `main`**, with that repo's checkout on `main` and every worktree excluded via `<root>/.graphifyignore`:
 
 ```bash
+cd /home/vladimir/projects/Projects/paperclip-projects
 graphify . --update
 ```
 
-For minor edits (bug fixes, docstrings, variable renames) — skip the update.
+See the `graphify-update` skill for the full preconditions.
 
 ## Query Cheatsheet
 
@@ -234,20 +234,13 @@ Always check confidence tags before acting on a relationship — `AMBIGUOUS` lin
 
 ## Team Setup
 
-`graphify-out/` should be committed to git so all agents start with a map:
+`graphify-out/` lives at the shared projects root only (`/home/vladimir/projects/Projects/paperclip-projects/graphify-out/`) and is **not** committed to git — it is local generated output. Never commit `graphify-out/` into any repository.
 
+Rebuild after a specific repo's PR merges into `main`:
 ```bash
-# .gitignore additions
-echo "graphify-out/manifest.json" >> .gitignore
-echo "graphify-out/cost.json" >> .gitignore
+cd /home/vladimir/projects/Projects/paperclip-projects
+graphify . --update
 ```
-
-Auto-rebuild on every commit (AST only, no API cost):
-```bash
-graphify hook install
-```
-
-This also installs a git merge driver for conflict-free `graph.json` union-merging.
 
 ## Integration with LightRAG
 
