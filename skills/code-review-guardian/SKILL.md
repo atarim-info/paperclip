@@ -23,6 +23,7 @@ Hard rules inherited from project contributor guides — they always apply:
 - **Never merge a PR or mark its issue `done` before the board approves the PR.**
 - Express "A is blocked by B" with first-class blockers (`blockedByIssueIds`), never free-text.
 - Respect the blocked-task dedup rule: no re-checkout, no re-comment without new context.
+- **Only the dedicated Graphify agent runs graph updates.** The merge owner creates a separate task for that agent and never runs Graphify as part of the contributor or review task.
 
 ---
 
@@ -123,7 +124,7 @@ If the merged issue is not yet `done`, close it now with a comment linking the m
 
 ### Step 2 — Generate a graphify update task for the dedicated agent
 
-Create a **new** issue so the knowledge graph never goes stale:
+Create a **new, separate** issue assigned to the dedicated Graphify agent so the knowledge graph never goes stale. Only that agent executes the update task; the merge owner and reviewer must not run Graphify commands.
 
 ```json
 POST /api/companies/{companyId}/issues
@@ -140,6 +141,8 @@ Description template:
 
 ```markdown
 ## Graphify update after merge
+
+Only the dedicated Graphify agent may execute this task.
 
 Merged PR: <pr-url> (<ISSUE-KEY>)
 Repo: <repo> (checkout: `/home/vladimir/projects/Projects/paperclip-projects/<repo>`)

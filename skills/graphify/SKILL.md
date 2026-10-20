@@ -50,14 +50,9 @@ superseded by this rule.
 
 ## Quick Reference
 
-```bash
-graphify .                        # build or rebuild the full graph
-graphify . --update               # refresh only changed files (fast)
-graphify query "what connects X to Y?"
-graphify path "ComponentA" "ComponentB"
-graphify explain "ClassName"
-graphify export callflow-html     # Mermaid architecture page
-```
+Use Graphify query, path, and explain to inspect the existing shared graph.
+
+Build and update commands are reserved for the dedicated Graphify agent in a separate task.
 
 Output lives in `graphify-out/`:
 ```
@@ -69,34 +64,17 @@ graphify-out/
 
 ## Agent Pipeline
 
-```
-Coding task arrives
-    ↓
-[Phase 1] CHECK — does graphify-out/graph.json exist?
-    ├── YES → query graph for task context
-    └── NO  → build graph first, then query
-    ↓
-Agent receives task + graph context
-    ↓
-Agent writes / edits / reviews code
-    ↓
-[Phase 2] UPDATE — only after a specific repo's PR merges into `main`
-    └── from the shared root, run graphify . --update (never mid-task on a branch)
-```
+Coding agents query the existing shared graph for context, then work on their assigned task. If the shared graph is missing or stale, continue from source code and create a separate task for the dedicated Graphify agent.
+
+After a PR merges into main, the merge owner creates a separate Graphify task. Only the dedicated Graphify agent runs the update from the shared root.
 
 ## Phase 1 — Pre-Task Graph Query
 
 Before writing any code, orient yourself using the graph.
 
-### Step 1 — Check graph freshness
+### Step 1 — Query the shared graph
 
-```bash
-ls graphify-out/graph.json 2>/dev/null && echo "EXISTS" || echo "MISSING"
-```
-
-- **Missing** → run `graphify .` to build
-- **Exists but stale** (repo changed significantly) → run `graphify . --update`
-- **Fresh** → proceed to query
+Query the existing shared graph for task context. Contributors do not check out a repository-local graphify-out/ or build/update a graph. If the shared graph is missing or stale, continue from source code and create a separate task assigned to the dedicated Graphify agent.
 
 ### Step 2 — Choose the right query
 
@@ -127,59 +105,15 @@ Structure the agent's working context as:
 <original coding task>
 ```
 
-## Building the Graph
+## Building and Updating the Shared Graph
 
-### Install (one-time)
+Only the dedicated Graphify agent builds or updates the shared graph, and only in a separate task created after a specific repo PR merges into main. All other contributors query the existing shared graph. If it is missing or stale, continue from source code and request a separate task assigned to the dedicated Graphify agent.
 
-```bash
-# Recommended
-uv tool install graphifyy
-
-# Alternatives
-pipx install graphifyy
-pip install graphifyy
-```
-
-### Build
-
-```bash
-# Full build
-graphify .
-
-# Build with extras (if project has PDFs, office docs, SQL schemas)
-pip install "graphifyy[pdf,office,sql]"
-graphify .
-
-# Skip HTML viz for speed (CI/headless)
-graphify . --no-viz
-
-# Deep mode — more aggressive relationship extraction
-graphify . --mode deep
-```
-
-### Incremental update (after code changes)
-
-```bash
-graphify . --update
-```
-
-Use `--update` for routine coding tasks. Reserve full rebuild for:
-- Major refactors that deleted/renamed many files
-- First run after cloning the repo
-- Ghost duplicate nodes (run `graphify extract . --force` to clean)
+The Graphify agent's task instructions define safe checkout and exclusion preconditions. Do not run build, update, or extraction commands as part of a coding, review, or merge task.
 
 ## Phase 2 — Post-Merge Graph Update
 
-**Do NOT update the graph during a coding task on a branch.** A root-wide `graphify . --update` is broad — the shared root also holds feature-branch worktrees (e.g. `backoffice-ata720p1`, `infrastructure-wt-ata175`, `infrastructure-ATA-229`) that must never enter the graph.
-
-Update only for a **specific repo whose PR is confirmed merged into `main`**, with that repo's checkout on `main` and every worktree excluded via `<root>/.graphifyignore`:
-
-```bash
-cd /home/vladimir/projects/Projects/paperclip-projects
-graphify . --update
-```
-
-See the `graphify-update` skill for the full preconditions.
+After a specific repo PR is confirmed merged into main, the merge owner creates a separate Paperclip task assigned to the dedicated Graphify agent. The merge owner and other contributors do not execute the update. The Graphify agent's task instructions define validation and update steps.
 
 ## Query Cheatsheet
 
@@ -234,13 +168,7 @@ Always check confidence tags before acting on a relationship — `AMBIGUOUS` lin
 
 ## Team Setup
 
-`graphify-out/` lives at the shared projects root only (`/home/vladimir/projects/Projects/paperclip-projects/graphify-out/`) and is **not** committed to git — it is local generated output. Never commit `graphify-out/` into any repository.
-
-Rebuild after a specific repo's PR merges into `main`:
-```bash
-cd /home/vladimir/projects/Projects/paperclip-projects
-graphify . --update
-```
+The shared graph lives at /home/vladimir/projects/Projects/paperclip-projects/graphify-out/ and is not committed to git. Contributors may query it. After a PR merges into main, the merge owner creates a separate task assigned to the dedicated Graphify agent. Only that agent updates the shared graph according to its task instructions.
 
 ## Integration with LightRAG
 
@@ -259,10 +187,10 @@ A coding agent should query both before acting on a task:
 | Failure | Action |
 |---------|--------|
 | `graphify: command not found` | Use `uv tool install graphifyy` or `pipx install graphifyy` |
-| Graph has fewer nodes after rebuild | Run `graphify extract . --force` |
-| Ghost duplicate nodes | Run `graphify extract . --force` to clean |
+| Graph has fewer nodes after an update | Ask the dedicated Graphify agent to investigate in its update task |
+| Ghost duplicate nodes | Ask the dedicated Graphify agent to investigate in its update task |
 | Extraction empty for docs/PDFs | Ensure `ANTHROPIC_API_KEY` (or relevant key) is set |
-| Graph too large for browser | Use `--no-viz` and query via CLI or MCP server |
+| Graph too large for browser | Ask the dedicated Graphify agent to export a view or query by CLI/MCP |
 
 ## Configuration Reference
 
@@ -276,7 +204,7 @@ A coding agent should query both before acting on a task:
 ## Hard Rules
 
 1. **Never skip Phase 1** for tasks touching more than one module. The graph reveals connections invisible from file structure alone.
-2. **Prefer `--update` over full rebuild** during active coding sessions.
+2. **Only the dedicated Graphify agent builds or updates the shared graph**, in a separate task after a PR merge.
 3. **God Nodes are your anchor.** If a task touches a God Node, assume wide blast radius and query for all dependents.
 4. **Code extraction is local and free** (tree-sitter AST, no API). Doc/PDF extraction costs API tokens. Batch doc extraction separately when token budget is tight.
 5. Dirty `graphify-out/` files are expected after hooks or incremental updates. Dirty graph files are not a reason to skip graphify.
