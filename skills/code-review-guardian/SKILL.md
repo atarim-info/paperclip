@@ -23,6 +23,7 @@ Hard rules inherited from project contributor guides — they always apply:
 - **Never merge a PR or mark its issue `done` before the board approves the PR.**
 - Express "A is blocked by B" with first-class blockers (`blockedByIssueIds`), never free-text.
 - Respect the blocked-task dedup rule: no re-checkout, no re-comment without new context.
+- **Only the dedicated Graphify agent runs graph updates.** The merge owner creates a separate task for that agent and never runs Graphify as part of the contributor or review task.
 
 ---
 
@@ -123,7 +124,7 @@ If the merged issue is not yet `done`, close it now with a comment linking the m
 
 ### Step 2 — Generate a graphify update task for the dedicated agent
 
-Create a **new** issue so the knowledge graph never goes stale:
+Create a **new, separate** issue assigned to the dedicated Graphify agent so the knowledge graph never goes stale. Only that agent executes the update task; the merge owner and reviewer must not run Graphify commands.
 
 ```json
 POST /api/companies/{companyId}/issues
@@ -141,16 +142,35 @@ Description template:
 ```markdown
 ## Graphify update after merge
 
-Merged PR: <pr-url> (<ISSUE-KEY>)
+Only the dedicated Graphify agent may execute this task.
 
-1. In the `<repo>` checkout run `graphify . --update` (incremental; cheap).
-2. Sync the refreshed output (`graph.json`, `graph.html`, `GRAPH_REPORT.md`,
-   `manifest.json`, `cache/`) to the shared upper-level location
-   `_default/graphify-out/<repo>/` — the shared location, not per-repo git
-   history, is the source of truth.
-3. Do **not** commit `graphify-out/` into the repository (see hard rules in the
+Merged PR: <pr-url> (<ISSUE-KEY>)
+Repo: <repo> (checkout: `/home/vladimir/projects/Projects/paperclip-projects/<repo>`)
+Target branch: `main`
+Merge commit: <sha>
+
+Preconditions — verify before running; if any fails, comment on this task and stop:
+1. The PR is merged with `<repo>`'s base branch `main` (not another branch, not still open).
+2. The `<repo>` checkout at the shared root is on `main` and fast-forwarded
+   (`git -C <root>/<repo> pull --ff-only origin main`). Do not switch branches; report a blocker instead.
+3. Every worktree dir at the root (`<repo>-wt-*`, `<repo>-ATA-*`, `<repo>-ata*`, e.g.
+   `backoffice-ata720p1`, `infrastructure-ATA-229`) is listed in `<root>/.graphifyignore`, so the
+   graph never picks up a feature-branch checkout.
+
+Then:
+4. From the shared projects root (`/home/vladimir/projects/Projects/paperclip-projects`)
+   run `graphify . --update` (incremental; cheap) — the root scan, never a run from
+   inside a checkout or worktree.
+5. Verify the refreshed shared graph at `graphify-out/` (`graph.json`,
+   `GRAPH_REPORT.md`, `manifest.json`, `cache/`). This single shared `graphify-out/`,
+   which lives outside every repository, is the source of truth. There is **no**
+   per-repo `graphify-out/<repo>/`.
+6. `graph.html` is only auto-written for graphs under the 5000-node viz cap. For
+   larger graphs, emit the aggregated view explicitly:
+   `graphify export html --graph graphify-out/graph.json --labels graphify-out/.graphify_labels.json`.
+7. Do **not** commit `graphify-out/` into any repository (see hard rules in the
    `graphify` skill).
-4. If docs/specs/ADRs changed, ingest the distilled content into LightRAG
+8. If docs/specs/ADRs changed, ingest the distilled content into LightRAG
    (`POST $LIGHTRAG_URL/documents/text` with `file_source` set to the doc path).
 ```
 
