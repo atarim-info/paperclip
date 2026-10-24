@@ -1601,6 +1601,26 @@ Validation:
 Read-time aggregate queries are acceptable for V1.
 Materialized rollups can be added later if query latency exceeds targets.
 
+The Costs overview distinguishes unknown billing categories, missing model/price
+data, and terminal runs awaiting final receipts. Bounded, company-scoped details
+load on demand at `GET /companies/:companyId/costs/data-quality`. Entries link to
+the run and, where applicable, agent configuration for future usage. Normal
+credits and fixed billing are not unknown billing warnings. Unavailable historic
+prices require no cleanup and must not be presented as zero-cost receipts.
+
+`POST /companies/:companyId/costs/retry-accounting` accepts a run ID, requires a
+board cost reader with a non-viewer membership, and uses the existing audited,
+idempotent accounting service. It never executes an agent. The UI offers retry
+only when the saved run is eligible to record costs. Missing final usage changes
+its display label after fifteen minutes; elapsed time never settles the debt or
+discards a late receipt. Raw provider errors and credentials are excluded from
+cost details. ACP usage retains the runtime-selected model, including defaults;
+conflicting before/after model IDs do not authorize a single-model estimate.
+Remote OpenCode billing uses only credentials forwarded to the execution target.
+Cost detail reads use company-scoped partial indexes matching their filters and
+sort order. Provider and biller cards retain estimate and missing-price labels;
+an accounting retry confirmation survives removal of the resolved cost gap.
+
 ## 14. UI Requirements (Board App)
 
 V1 UI routes:
@@ -2118,3 +2138,7 @@ authentication, replay, document-sized limits, inspection, and deletion semantic
 Company Settings → General can configure one shared API-key connection for optional internal decisions. V1 supports OpenAI Decisions and Jev through OpenRouter. Companies start unconfigured; background sponsorship defaults on when configured, while an explicit off setting persists. Human and agent calls retain current responsible-user, connection audience, resource, and agent installation checks. Only explicitly registered internal background features can use company sponsorship.
 
 The internal service provides local-only availability and bounded, reauthorized execution. It records metadata-only invocation history and independent fractional service charges in the existing cost ledger, applying company and applicable agent/project budgets under the accounting lock. Unknown dispatch charges retain reservations until audited resolution. Settings/testing require connection management permission; history uses existing cost visibility. See [decision-models.md](decision-models.md) for the contract, supported models, accounting, privacy, and endpoints.
+
+## Company fast-response service
+
+Companies may configure an optional shared API connection and model for short acknowledgements of accepted human turns. Fast responses use direct SDK inference alongside normal agent work, with a three-second admission deadline, bounded prompts/output, current authorization and independent `fast_response` accounting. They are server-marked platform receipts attributed to the agent, never completion, interaction or recovery evidence. Company-sponsored unlinked external senders are explicit; linked-user permission denials are never bypassed. See [fast-responses.md](fast-responses.md) for provider, delivery, history and endpoint contracts.
