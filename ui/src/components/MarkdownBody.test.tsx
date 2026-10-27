@@ -19,6 +19,7 @@ import { StatusIcon } from "./StatusIcon";
 import { taskStatusIconProps } from "../lib/task-status-presentation";
 import type { IssueBlockerAttention } from "@paperclipai/shared";
 import { MarkdownWordStreaming } from "./MarkdownWordStreaming";
+import { applyCompanyPrefix } from "../lib/company-routes";
 import { queryKeys } from "../lib/queryKeys";
 import type { WorkspaceFileAvailabilityTarget } from "../lib/workspace-file-availability";
 
@@ -30,6 +31,8 @@ const OPENABLE_AUTO_TARGET: WorkspaceFileAvailabilityTarget = {
   projectName: null,
 };
 
+const mockCompanyPrefix = vi.hoisted(() => ({ value: null as string | null }));
+
 const mockIssuesApi = vi.hoisted(() => ({
   get: vi.fn(),
 }));
@@ -40,7 +43,7 @@ vi.mock("@/lib/router", () => ({
     to,
     ...props
   }: { children: ReactNode; to: string } & React.ComponentProps<"a">) => (
-    <a href={to} {...props}>{children}</a>
+    <a href={applyCompanyPrefix(to, mockCompanyPrefix.value)} data-company-link="true" {...props}>{children}</a>
   ),
   useLocation: () => ({
     pathname: "/PAP/issues/PAP-10306",
@@ -64,6 +67,8 @@ vi.mock("../context/CompanyContext", () => ({
 
 afterEach(() => {
   mockUseOptionalCompany.mockReturnValue(null);
+  mockCompanyPrefix.value = null;
+  vi.unstubAllGlobals();
 });
 
 function renderMarkdown(
@@ -125,6 +130,16 @@ describe("MarkdownBody", () => {
     expect(renderMarkdown("[Unknown](//RUN/agents/a/runs/r)")).toContain('href="//RUN/agents/a/runs/r"');
   });
 
+  it.each([
+    ["root-relative", "/approvals/approval-1"],
+    ["same-origin absolute", "http://localhost:3100/approvals/approval-1"],
+  ])("company-prefixes %s internal markdown links", (_kind, href) => {
+    vi.stubGlobal("window", { location: { origin: "http://localhost:3100" } });
+    mockCompanyPrefix.value = "PAP";
+    const html = renderMarkdown(`[Board approval](${href})`);
+    expect(html).toContain('href="/PAP/approvals/approval-1"');
+    expect(html).toContain('data-company-link="true"');
+  });
   it("preserves a saved document anchor in an explicit task link", () => {
     // Hover/focus can resolve the issue to its plain identifier. Both the old
     // fragment-bearing cache key and the corrected plain key model that load.
