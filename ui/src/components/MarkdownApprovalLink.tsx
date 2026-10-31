@@ -26,7 +26,7 @@ export function MarkdownApprovalLink({
     retry: false,
   });
   // A cached approval from another company must never supply this label.
-  const subject = belongsToActiveRoute && data?.companyId === selectedId
+  const subject = belongsToActiveRoute && data && data.companyId === selectedId
     ? approvalSubject(data.payload)
     : null;
   const label = typeof children === "string" ? children.trim() : null;
