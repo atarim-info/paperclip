@@ -58,6 +58,14 @@ describe("Markdown approval references", () => {
     expect(html).not.toContain('href="/ATA/approvals/');
     expect(html).toMatch(new RegExp(`<code[^>]*>approval ${id}</code>`));
   });
+  it("preserves hosted company-ID URLs even when the approval ID exists locally", () => {
+    const href = `https://app.paperclip.so/companies/${company.id}/approvals/${id}`;
+    const html = render(`**Board approval:** ${href}`);
+    expect(html).toContain(`href="${href}"`);
+    expect(html).toContain('target="_blank"');
+    expect(html).not.toContain(`href="/ATA/approvals/${id}"`);
+    expect(html).not.toContain(title);
+  });
   it("keeps another company's explicit prefix and hides mismatched cached titles", () => {
     const html = renderToStaticMarkup(tree(`[${id}](/OTHER/approvals/${id})`, true,
       { ...approval, companyId: "other-company" }));
