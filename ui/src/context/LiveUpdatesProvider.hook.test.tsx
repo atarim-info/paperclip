@@ -8,15 +8,18 @@ import type { LiveEvent } from "@paperclipai/shared";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { queryKeys } from "../lib/queryKeys";
 
-const { pushToast, companySelection } = vi.hoisted(() => ({
+const { pushToast, companySelection, getIssue, routeSelection } = vi.hoisted(() => ({
+  getIssue: vi.fn(),
+  routeSelection: { pathname: "/PAP/issues/PAP-204" },
   pushToast: vi.fn(() => "toast-id"),
   companySelection: { id: "company-1" },
 }));
 vi.mock("./CompanyContext", () => ({
   useCompany: () => ({ selectedCompanyId: companySelection.id, selectedCompany: { id: companySelection.id } }),
 }));
+vi.mock("../api/issues", () => ({ issuesApi: { get: getIssue } }));
 vi.mock("./ToastContext", () => ({ useToastActions: () => ({ pushToast }) }));
-vi.mock("../lib/router", () => ({ useLocation: () => ({ pathname: "/PAP/issues/PAP-204" }) }));
+vi.mock("../lib/router", () => ({ useLocation: () => routeSelection }));
 vi.mock("../api/auth", () => ({
   authApi: { getSession: async () => ({ user: { id: "viewer" }, session: { id: "session", userId: "viewer" } }) },
 }));
@@ -136,7 +139,9 @@ describe("LiveUpdatesProvider socket run notification scope", () => {
 
   beforeEach(() => {
     pushToast.mockClear();
+    getIssue.mockReset();
     companySelection.id = "company-1";
+    routeSelection.pathname = "/PAP/issues/PAP-204";
     queryClient = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } });
     queryClient.setQueryData(queryKeys.auth.session, { user: { id: "viewer" }, session: { id: "session", userId: "viewer" } });
     queryClient.setQueryData(queryKeys.issues.detail("PAP-204"), {
@@ -203,9 +208,112 @@ describe("LiveUpdatesProvider socket run notification scope", () => {
     await reactAct(async () => sockets[0]!.onmessage!(new MessageEvent("message", {
       data: JSON.stringify({ id: 99, companyId: "company-1", type: "activity.logged",
         createdAt: "2026-09-09T18:00:00.000Z", toastEligible: eligibility,
-        payload: { entityType: "issue", entityId: "other-task", action: "issue.comment_added", actorType: "user", actorId: "another-user" } }),
+        payload: { entityType: "issue", entityId: "other-task", action: "issue.comment_added", actorType: "user", actorId: "another-user", details: { identifier: "PAP-301", issueTitle: "Another task" } } }),
     })));
     expect(pushToast).toHaveBeenCalledTimes(eligibility === true ? 1 : 0);
+  });
+
+  async function receiveComment(details: Record<string, unknown> = {}) {
+    await reactAct(async () => sockets[0]!.onmessage!(new MessageEvent("message", {
+      data: JSON.stringify({ id: Date.now(), companyId: "company-1", type: "activity.logged", toastEligible: true,
+        payload: { entityType: "issue", entityId: "uncached-task", action: "issue.comment_added",
+          actorType: "agent", actorId: "deployment-agent", actorName: "Deployment Engineer", details } }),
+    })));
+  }
+
+  it("resolves an uncached task before showing its comment notification", async () => {
+    getIssue.mockResolvedValue({ id: "uncached-task", companyId: "company-1", identifier: "ATA-1076", title: "Dockerfile build context bug" });
+    await receiveStatus({ runId: "setup", agentId: "other-agent", status: "running" });
+    await receiveComment({ commentId: "comment-1", bodySnippet: "Deployment verified" });
+    await vi.waitFor(() => expect(pushToast).toHaveBeenCalledWith(expect.objectContaining({
+      title: "Deployment Engineer commented on ATA-1076 - Dockerfile build context bug",
+      body: "Deployment verified", action: { label: "View ATA-1076", href: "/issues/ATA-1076" },
+    })));
+    expect(getIssue).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses complete event labels without fetching task details", async () => {
+    await receiveStatus({ runId: "setup", agentId: "other-agent", status: "running" });
+    await receiveComment({ identifier: "ATA-1076", issueTitle: "Dockerfile build context bug" });
+    expect(pushToast).toHaveBeenCalledWith(expect.objectContaining({ title: "Deployment Engineer commented on ATA-1076 - Dockerfile build context bug" }));
+    expect(getIssue).not.toHaveBeenCalled();
+  });
+
+  it("does not deliver a pending task label after a company switch", async () => {
+    let finish!: (issue: unknown) => void;
+    getIssue.mockImplementation(() => new Promise((resolve) => { finish = resolve; }));
+    await receiveStatus({ runId: "setup", agentId: "other-agent", status: "running" });
+    await receiveComment();
+    await vi.waitFor(() => expect(getIssue).toHaveBeenCalledTimes(1));
+    await reactAct(async () => {
+      companySelection.id = "company-2";
+      root!.render(<QueryClientProvider client={queryClient}><LiveUpdatesProvider><span>Other company</span></LiveUpdatesProvider></QueryClientProvider>);
+    });
+    await reactAct(async () => finish({ id: "uncached-task", companyId: "company-1", identifier: "ATA-1076", title: "Private old title" }));
+    expect(pushToast).not.toHaveBeenCalled();
+  });
+
+  it("reuses a cached task identity without a detail request", async () => {
+    queryClient.setQueryData(queryKeys.issues.detail("uncached-task"), { id: "uncached-task", companyId: "company-1", identifier: "ATA-1076", title: "Dockerfile build context bug" });
+    await receiveStatus({ runId: "setup", agentId: "other-agent", status: "running" });
+    await receiveComment();
+    expect(pushToast).toHaveBeenCalledWith(expect.objectContaining({ title: "Deployment Engineer commented on ATA-1076 - Dockerfile build context bug" }));
+    expect(getIssue).not.toHaveBeenCalled();
+  });
+
+  it("fetches a missing title even when a partial cache entry is fresh", async () => {
+    queryClient.setQueryData(queryKeys.issues.detail("uncached-task"), { id: "uncached-task", companyId: "company-1", identifier: "ATA-1076" });
+    getIssue.mockResolvedValue({ id: "uncached-task", companyId: "company-1", identifier: "ATA-1076", title: "Resolved task title" });
+    await receiveStatus({ runId: "setup", agentId: "other-agent", status: "running" });
+    await receiveComment();
+    await vi.waitFor(() => expect(pushToast).toHaveBeenCalledWith(expect.objectContaining({ title: "Deployment Engineer commented on ATA-1076 - Resolved task title" })));
+    expect(getIssue).toHaveBeenCalledTimes(1);
+  });
+
+  it("shares one lookup across concurrent comments on an unknown task", async () => {
+    let finish!: (issue: unknown) => void;
+    getIssue.mockImplementation(() => new Promise((resolve) => { finish = resolve; }));
+    await receiveStatus({ runId: "setup", agentId: "other-agent", status: "running" });
+    await receiveComment({ commentId: "one" });
+    await receiveComment({ commentId: "two" });
+    expect(pushToast).not.toHaveBeenCalled();
+    expect(getIssue).toHaveBeenCalledTimes(1);
+    await reactAct(async () => finish({ id: "uncached-task", companyId: "company-1", identifier: "ATA-1076", title: "Shared task" }));
+    await vi.waitFor(() => expect(pushToast).toHaveBeenCalledTimes(2));
+  });
+
+  it("keeps failed lookups quiet without retrying or showing raw UUIDs", async () => {
+    getIssue.mockRejectedValue(new Error("Unavailable"));
+    await receiveStatus({ runId: "setup", agentId: "other-agent", status: "running" });
+    await receiveComment();
+    await vi.waitFor(() => expect(queryClient.getQueryState(queryKeys.issues.detail("uncached-task"))?.status).toBe("error"));
+    expect(pushToast).not.toHaveBeenCalled();
+    expect(getIssue).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects a task response from another company before caching its title", async () => {
+    getIssue.mockResolvedValue({ id: "uncached-task", companyId: "company-2", identifier: "OTHER-1", title: "Other company title" });
+    await receiveStatus({ runId: "setup", agentId: "other-agent", status: "running" });
+    await receiveComment();
+    await vi.waitFor(() => expect(getIssue).toHaveBeenCalledTimes(1));
+    expect(pushToast).not.toHaveBeenCalled();
+    expect(queryClient.getQueryData(queryKeys.issues.detail("uncached-task"))).toBeUndefined();
+  });
+
+  it("discards a pending notification after navigating away and back", async () => {
+    let finish!: (issue: unknown) => void;
+    getIssue.mockImplementation(() => new Promise((resolve) => { finish = resolve; }));
+    await receiveStatus({ runId: "setup", agentId: "other-agent", status: "running" });
+    await receiveComment();
+    await vi.waitFor(() => expect(getIssue).toHaveBeenCalledTimes(1));
+    for (const pathname of ["/PAP/issues/another-task", "/PAP/issues/PAP-204"]) {
+      await reactAct(async () => {
+        routeSelection.pathname = pathname;
+        root!.render(<QueryClientProvider client={queryClient}><LiveUpdatesProvider><span>{pathname}</span></LiveUpdatesProvider></QueryClientProvider>);
+      });
+    }
+    await reactAct(async () => finish({ id: "uncached-task", companyId: "company-1", identifier: "ATA-1076", title: "Already read task" }));
+    expect(pushToast).not.toHaveBeenCalled();
   });
 
   it("keeps generic agent errors quiet even with eligibility metadata", async () => {

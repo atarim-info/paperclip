@@ -1962,3 +1962,24 @@ describe("activity toast attribution", () => {
     expect(toast?.actor).toBeUndefined();
   });
 });
+
+
+describe("activity toast task identity", () => {
+  it.each([
+    [false, false, "commented on"],
+    [true, false, "reopened and commented on"],
+    [false, true, "commented and updated"],
+  ])("includes the identifier and title with a comment snippet (%s, %s)", (reopened, updated, verb) => {
+    const client = new QueryClient();
+    const toast = __liveUpdatesTestUtils.buildActivityToast(client, "company-1", {
+      entityType: "issue", entityId: "8371da87-1111-4111-8111-111111111111",
+      action: "issue.comment_added", actorType: "agent", actorId: "deployment-agent",
+      actorName: "Deployment Engineer",
+      details: { identifier: "ATA-1076", issueTitle: "Dockerfile build context bug", bodySnippet: "Deployment verified", reopened, updated },
+    }, { userId: "viewer", agentId: null });
+    expect(toast?.title).toBe(`Deployment Engineer ${verb} ATA-1076 - Dockerfile build context bug`);
+    expect(toast?.body).toContain("Deployment verified");
+    expect(toast?.action?.href).toBe("/issues/ATA-1076");
+    client.clear();
+  });
+});
