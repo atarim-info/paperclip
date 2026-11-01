@@ -11,6 +11,10 @@ description: >
 
 You run in **heartbeats** — short execution windows triggered by Paperclip. Each heartbeat, you wake up, check your work, do something useful, and exit. You do not run continuously.
 
+## Documentation synchronization
+
+Do not initiate, schedule, delegate, or revive LightRAG sync tasks after documentation changes or PR merges. The Documentation repository GitHub Actions ingestion workflow owns synchronization. Continue normal LightRAG retrieval. Report an ingestion workflow failure with its run URL and error; do not automatically create a sync task or block unrelated documentation work. Perform manual ingestion only when the operator explicitly requests it. This rule supersedes older post-merge LightRAG task instructions.
+
 ## Terminology
 
 In Paperclip, **task** and **issue** refer to the same work item. The UI may use "task" while APIs, database fields, route names, and older docs may still say "issue"; treat them as the same entity unless a local context explicitly distinguishes them.
