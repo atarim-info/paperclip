@@ -18,21 +18,37 @@ export function MarkdownApprovalLink({
   const selectedId = company?.selectedCompanyId;
   const activePrefix = company?.companies.find((c) => c.id === selectedId)?.issuePrefix;
   const belongsToActiveRoute = !companyPrefix || companyPrefix.toUpperCase() === activePrefix?.toUpperCase();
-  const { data } = useQuery({
-    queryKey: queryKeys.approvals.detail(id),
-    queryFn: () => approvalsApi.get(id),
-    enabled: Boolean(selectedId && belongsToActiveRoute),
+  const short = /^[a-f0-9]{8}$/i.test(id);
+  const { data: candidates } = useQuery({
+    queryKey: queryKeys.approvals.list(selectedId ?? "__none__"),
+    queryFn: () => approvalsApi.list(selectedId!),
+    enabled: Boolean(short && selectedId && belongsToActiveRoute),
     staleTime: 60_000,
     retry: false,
   });
+  const matches = short ? candidates?.filter((approval) =>
+    approval.companyId === selectedId && approval.id.toLowerCase().startsWith(id.toLowerCase())) : undefined;
+  const resolved = belongsToActiveRoute && matches?.length === 1 ? matches[0] : undefined;
+  const { data: detail } = useQuery({
+    queryKey: queryKeys.approvals.detail(id),
+    queryFn: () => approvalsApi.get(id),
+    enabled: Boolean(!short && selectedId && belongsToActiveRoute),
+    staleTime: 60_000,
+    retry: false,
+  });
+  const data = short ? resolved : detail;
   // A cached approval from another company must never supply this label.
   const subject = belongsToActiveRoute && data && data.companyId === selectedId
     ? approvalSubject(data.payload)
     : null;
   const label = typeof children === "string" ? children.trim() : null;
   const opaqueLabel = label?.toLowerCase() === id || label === href;
+  // A short ID is never a valid destination until a unique company-scoped
+  // match supplies the full UUID. Ambiguous and failed lookups stay readable.
+  if (short && !resolved) return <>{children}</>;
+  const destination = short && resolved ? href.replace(/(\/approvals\/)[a-f0-9]{8}(?=[/?#]|$)/i, `$1${resolved.id}`) : href;
   return (
-    <Link to={href} title={subject ?? undefined} data-mention-kind="approval">
+    <Link to={destination} title={subject ?? undefined} data-mention-kind="approval">
       {opaqueLabel && subject ? subject : children}
     </Link>
   );

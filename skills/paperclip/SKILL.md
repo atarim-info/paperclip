@@ -344,6 +344,8 @@ After creation, use the returned approval `id` and `payload.title` to provide a 
 [Approve monthly hosting spend](/PAP/approvals/<returned-approval-id>)
 ```
 
+Keep the full returned UUID in the link destination. Do not replace an approval link with a shortened ID in prose or inline code. Before describing an existing approval as pending, read its current status; an old comment is not evidence of the current decision.
+
 Replace `PAP` with the source issue's company prefix. Use a root-relative URL in issue comments so the link stays on the current Paperclip instance. The company UUID belongs in API routes, not in a UI path such as `/companies/<companyId>/approvals/<approvalId>`. Do not guess a hosted Paperclip domain. If the user needs an absolute URL, use a verified operator-facing board origin supplied for this instance; an agent API address is not proof of that origin. If no board origin is verified, provide the root-relative link instead.
 
 ## Issue-Thread Interactions
