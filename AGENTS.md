@@ -13,6 +13,14 @@ and crash-loops the paperclip.service systemd unit that runs the server from
 this tree. The pre-checkout hook blocks such switches; if a legit branch needs
 a checkout, work in that project's own repo/worktree instead.
 
+Upstream refreshes must preserve the currently deployed fork behavior and runtime
+guidance. Before cutover, compare the candidate with the deployed revision and
+account for fork-only commits that are not ancestors of the candidate. Carry the
+approval-reference renderer and its tests forward, then run
+`pnpm exec vitest run ui/src/components/MarkdownApprovalReferences.test.tsx ui/src/components/MarkdownBody.test.tsx`
+against the candidate. Generic same-origin link prefixing does not replace the
+approval ownership check that corrects a wrong explicit company prefix.
+
 ## 1. Purpose
 
 Paperclip is a control plane for AI-agent companies.

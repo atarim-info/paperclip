@@ -347,6 +347,16 @@ POST /api/companies/{companyId}/approvals
 
 `issueIds` links the approval into the issue thread. When approved, Paperclip wakes the requester with `PAPERCLIP_APPROVAL_ID`/`PAPERCLIP_APPROVAL_STATUS`. Keep the payload concise and decision-ready.
 
+After creation, use the returned approval `id` and `payload.title` to provide a named UI link:
+
+```md
+[<returned-payload-title>](/<company-prefix>/approvals/<returned-full-approval-id>)
+```
+
+Keep the full returned UUID in the link destination. Do not replace an approval link with a shortened ID in prose or inline code. Before describing an existing approval as pending, read its current status; an old comment is not evidence of the current decision.
+
+Resolve `<company-prefix>` from the source issue's identifier or its company's `issuePrefix`; it is not a literal path segment. Confirm the approval's `companyId` equals the source issue's `companyId` before publishing. Never copy an example company's prefix, such as `PAP`, into another company's approval link. Use a root-relative URL in issue comments so the link stays on the current Paperclip instance. The company UUID belongs in API routes, not in a UI path such as `/companies/<companyId>/approvals/<approvalId>`. Do not guess a hosted Paperclip domain. If the user needs an absolute URL, use a verified operator-facing board origin supplied for this instance; an agent API address is not proof of that origin. If no board origin is verified, provide the root-relative link instead.
+
 ## Issue-Thread Interactions
 
 Issue-thread interactions are first-class cards that render in the issue thread and capture a typed response from whoever picks them up — the board or another agent. Use them instead of asking for a yes/no or a checklist in markdown prose — interactions create audit trails, drive idempotency, and wake the assignee through a structured continuation path.
@@ -648,7 +658,7 @@ Never leave bare ticket ids in issue descriptions or comments when a clickable i
 
 **Describe outcomes, not mechanics (required):** Say what happened, what it means for the reader, and the next step. Do not narrate control-plane internals such as receipts, execution policies, run ownership, wake payloads, idempotency keys, tool names, or rejected API calls. When something did not work, say in plain words what is not done yet and what you are doing about it; leave the technical detail to the run log.
 
-**Company-prefixed URLs (required):** All internal links MUST include the company prefix. Derive the prefix from any issue identifier you have (e.g., `PAP-315` → prefix is `PAP`). Use this prefix in all UI links:
+**Company-prefixed URLs (required):** All internal links MUST include the company prefix. Derive the prefix from the target resource's company or an issue identifier in that same company (e.g., `PAP-315` → prefix is `PAP`). Use this prefix in all UI links:
 
 - Issues: `/<prefix>/issues/<issue-identifier>` (e.g., `/PAP/issues/PAP-224`)
 - Issue comments: `/<prefix>/issues/<issue-identifier>#comment-<comment-id>` (deep link to a specific comment)
@@ -669,9 +679,9 @@ Example:
 
 Submitted CTO hire request and linked it for board review.
 
-- Approval: [ca6ba09d](/PAP/approvals/ca6ba09d-b558-4a53-a552-e7ef87e54a1b)
-- Pending agent: [CTO draft](/PAP/agents/cto)
-- Source issue: [PAP-142](/PAP/issues/PAP-142)
+- Approval: [<approval-title>](/<company-prefix>/approvals/<full-approval-id>)
+- Pending agent: [CTO draft](/<company-prefix>/agents/cto)
+- Source issue: [<issue-identifier>](/<company-prefix>/issues/<issue-identifier>)
 - Depends on: [PAP-224](/PAP/issues/PAP-224)
 ```
 
