@@ -2430,6 +2430,15 @@ when upstream materialization is disabled.
 Skill-list and skill-sync responses report stored assignment pins in
 `desiredSkillEntries`. A resolved runtime `versionId` does not turn a selection
 that follows Latest into a pin when the UI saves another assignment.
+Persistent adapters report a symlink to a different immutable version of the
+same managed skill as stale. Skill sync replaces it with the selected version,
+including an explicitly pinned older version, once that source is present.
+Ownership requires the same full `__versions__/<skillId>` root and UUID version
+names. Sync preserves live links to other skills, companies, or user locations,
+and preserves real directories. Retaining a previous version in the cache does
+not prevent the installed link from following the selected version.
+A shared skills home still holds one version per runtime skill name. Agents
+that need different pins concurrently must use separate skills homes.
 
 The server starts scanning one minute after startup, then hourly, in batches of
 50 inspected directories with one-second continuations. Current versions,
