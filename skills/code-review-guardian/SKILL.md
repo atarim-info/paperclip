@@ -170,8 +170,9 @@ Then:
    `graphify export html --graph graphify-out/graph.json --labels graphify-out/.graphify_labels.json`.
 7. Do **not** commit `graphify-out/` into any repository (see hard rules in the
    `graphify` skill).
-8. If docs/specs/ADRs changed, ingest the distilled content into LightRAG
-   (`POST $LIGHTRAG_URL/documents/text` with `file_source` set to the doc path).
+8. Documentation ingestion is handled by the Documentation repository GitHub Actions
+   workflow. Do not initiate or delegate a LightRAG sync task after review or merge.
+   Report workflow failures without automatically creating follow-up sync work.
 ```
 
 **Finding the dedicated agent:** list agents with
