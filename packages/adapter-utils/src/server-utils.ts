@@ -3953,6 +3953,20 @@ export function buildRuntimeMountedSkillSnapshot(
   };
 }
 
+function isSameVersionedPaperclipSkill(source: string, installedSource: string): boolean {
+  const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const skillRoot = (candidate: string): string | null => {
+    if (!path.isAbsolute(candidate)) return null;
+    const normalized = path.resolve(candidate);
+    const parent = path.dirname(normalized);
+    if (!uuid.test(path.basename(normalized)) || !uuid.test(path.basename(parent))) return null;
+    if (path.basename(path.dirname(parent)) !== "__versions__") return null;
+    return parent;
+  };
+  const sourceRoot = skillRoot(source);
+  return sourceRoot !== null && sourceRoot === skillRoot(installedSource);
+}
+
 export function buildPersistentSkillSnapshot(
   options: PersistentSkillSnapshotOptions,
 ): AdapterSkillSnapshot {
@@ -4003,6 +4017,14 @@ export function buildPersistentSkillSnapshot(
       managed = true;
       state = desired ? "installed" : "stale";
       detail = installedDetail ?? null;
+    } else if (
+      installedEntry?.kind === "symlink" &&
+      installedEntry.targetPath &&
+      isSameVersionedPaperclipSkill(available.source, installedEntry.targetPath)
+    ) {
+      managed = true;
+      state = "stale";
+      detail = "Installed version differs from the selected managed skill version. Sync to refresh it.";
     } else if (installedEntry) {
       state = "external";
       detail = desired ? externalConflictDetail : externalDetail;
@@ -4389,7 +4411,9 @@ export async function ensurePaperclipSkillSymlink(
     .then(() => true)
     .catch(() => false);
   if (linkedPathExists) {
-    return "skipped";
+    if (!isSameVersionedPaperclipSkill(source, resolvedLinkedPath)) return "skipped";
+    const sourceExists = await fs.stat(source).then((stat) => stat.isDirectory()).catch(() => false);
+    if (!sourceExists) return "skipped";
   }
 
   await fs.unlink(target);
