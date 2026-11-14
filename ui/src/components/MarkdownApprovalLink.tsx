@@ -32,13 +32,16 @@ export function MarkdownApprovalLink({
   const { data: detail } = useQuery({
     queryKey: queryKeys.approvals.detail(id),
     queryFn: () => approvalsApi.get(id),
-    enabled: Boolean(!short && selectedId && belongsToActiveRoute),
+    // A copied example prefix must not suppress the authenticated ownership
+    // lookup. Only the returned company ID can justify correcting a full UUID.
+    enabled: Boolean(!short && selectedId),
     staleTime: 60_000,
     retry: false,
   });
   const data = short ? resolved : detail;
   // A cached approval from another company must never supply this label.
-  const subject = belongsToActiveRoute && data && data.companyId === selectedId
+  const ownsActiveApproval = Boolean(data && data.companyId === selectedId);
+  const subject = ownsActiveApproval && data
     ? approvalSubject(data.payload)
     : null;
   const label = typeof children === "string" ? children.trim() : null;
@@ -46,7 +49,10 @@ export function MarkdownApprovalLink({
   // A short ID is never a valid destination until a unique company-scoped
   // match supplies the full UUID. Ambiguous and failed lookups stay readable.
   if (short && !resolved) return <>{children}</>;
-  const destination = short && resolved ? href.replace(/(\/approvals\/)[a-f0-9]{8}(?=[/?#]|$)/i, `$1${resolved.id}`) : href;
+  let destination = short && resolved ? href.replace(/(\/approvals\/)[a-f0-9]{8}(?=[/?#]|$)/i, `$1${resolved.id}`) : href;
+  if (!short && ownsActiveApproval && activePrefix) {
+    destination = destination.replace(/^\/(?:[^/]+\/)?approvals\//i, `/${activePrefix}/approvals/`);
+  }
   return (
     <Link to={destination} title={subject ?? undefined} data-mention-kind="approval">
       {opaqueLabel && subject ? subject : children}
