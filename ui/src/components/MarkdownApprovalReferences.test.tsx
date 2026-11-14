@@ -115,6 +115,25 @@ describe("Markdown approval references", () => {
     expect(html).not.toContain(`href="/ATA/approvals/${id}"`);
     expect(html).not.toContain(title);
   });
+  it.each(["/PAP/approvals", "/PAP/APPROVALS"])("corrects a copied prefix after verifying ownership: %s", (path) => {
+    const html = render(`[Review this decision](${path}/${id}?view=full#comments)`);
+    expect(html).toContain(`href="/ATA/approvals/${id}?view=full#comments"`);
+    expect(html).toContain(">Review this decision</a>");
+    expect(html).toContain(`title="${title}"`);
+  });
+  it("loads approval ownership to correct an uncached wrong-prefix reference", async () => {
+    api.get.mockResolvedValue(approval);
+    const host = document.createElement("div");
+    const root = createRoot(host);
+    try {
+      await act(async () => { root.render(tree(`[${id}](/PAP/approvals/${id})`, false)); });
+      await vi.waitFor(async () => {
+        await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+        expect(host.querySelector("a")?.getAttribute("href")).toBe(`/ATA/approvals/${id}`);
+        expect(host.textContent).toContain(title);
+      });
+    } finally { await act(async () => root.unmount()); }
+  });
   it("keeps another company's explicit prefix and hides mismatched cached titles", () => {
     const html = renderToStaticMarkup(tree(`[${id}](/OTHER/approvals/${id})`, true,
       { ...approval, companyId: "other-company" }));

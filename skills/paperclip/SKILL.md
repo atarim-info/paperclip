@@ -341,12 +341,12 @@ POST /api/companies/{companyId}/approvals
 After creation, use the returned approval `id` and `payload.title` to provide a named UI link:
 
 ```md
-[Approve monthly hosting spend](/PAP/approvals/<returned-approval-id>)
+[<returned-payload-title>](/<company-prefix>/approvals/<returned-full-approval-id>)
 ```
 
 Keep the full returned UUID in the link destination. Do not replace an approval link with a shortened ID in prose or inline code. Before describing an existing approval as pending, read its current status; an old comment is not evidence of the current decision.
 
-Replace `PAP` with the source issue's company prefix. Use a root-relative URL in issue comments so the link stays on the current Paperclip instance. The company UUID belongs in API routes, not in a UI path such as `/companies/<companyId>/approvals/<approvalId>`. Do not guess a hosted Paperclip domain. If the user needs an absolute URL, use a verified operator-facing board origin supplied for this instance; an agent API address is not proof of that origin. If no board origin is verified, provide the root-relative link instead.
+Resolve `<company-prefix>` from the source issue's identifier or its company's `issuePrefix`; it is not a literal path segment. Confirm the approval's `companyId` equals the source issue's `companyId` before publishing. Never copy an example company's prefix, such as `PAP`, into another company's approval link. Use a root-relative URL in issue comments so the link stays on the current Paperclip instance. The company UUID belongs in API routes, not in a UI path such as `/companies/<companyId>/approvals/<approvalId>`. Do not guess a hosted Paperclip domain. If the user needs an absolute URL, use a verified operator-facing board origin supplied for this instance; an agent API address is not proof of that origin. If no board origin is verified, provide the root-relative link instead.
 
 ## Issue-Thread Interactions
 
@@ -645,7 +645,7 @@ When posting issue comments or writing issue descriptions, use concise markdown 
 
 Never leave bare ticket ids in issue descriptions or comments when a clickable internal link can be provided.
 
-**Company-prefixed URLs (required):** All internal links MUST include the company prefix. Derive the prefix from any issue identifier you have (e.g., `PAP-315` → prefix is `PAP`). Use this prefix in all UI links:
+**Company-prefixed URLs (required):** All internal links MUST include the company prefix. Derive the prefix from the target resource's company or an issue identifier in that same company (e.g., `PAP-315` → prefix is `PAP`). Use this prefix in all UI links:
 
 - Issues: `/<prefix>/issues/<issue-identifier>` (e.g., `/PAP/issues/PAP-224`)
 - Issue comments: `/<prefix>/issues/<issue-identifier>#comment-<comment-id>` (deep link to a specific comment)
