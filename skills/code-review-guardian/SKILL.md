@@ -13,6 +13,8 @@ description: >
 
 # Code Review Guardian
 
+These procedures preserve the task's explicit merge/deployment authorization; an approval record does not override a no-merge or no-deploy instruction.
+
 Two mandatory procedures wrap every code review. They are **company-wide**: they apply to any
 project that tracks work with Paperclip issue keys and ships through PRs (UTMS, backoffice,
 infrastructure, ...). The **Code Reviewer/Guardian** agent owns Procedure 1; whoever confirms
@@ -20,12 +22,18 @@ the merge owns Procedure 2.
 
 Hard rules inherited from project contributor guides — they always apply:
 
-- **Never merge a PR or mark its issue `done` before the board approves the PR.**
+- **Never merge a PR or mark its implementation issue `done` before its required board approval.** A separate review task can finish with a recorded verdict; that does not approve merge or deployment.
 - Express "A is blocked by B" with first-class blockers (`blockedByIssueIds`), never free-text.
 - Respect the blocked-task dedup rule: no re-checkout, no re-comment without new context.
 - **Only the dedicated Graphify agent runs graph updates.** The merge owner creates a separate task for that agent and never runs Graphify as part of the contributor or review task.
 
 ---
+
+## Choose the review mechanism first
+
+Read the task executionPolicy/executionState before applying Procedure 1. If an embedded execution-review stage exists, use its supported structured APPROVED or CHANGES REQUESTED decision and verify persistence. Record the repository, PR URL, exact reviewed head SHA, findings and evidence on the implementation parent. The stage owns return-assignee routing; do not manually remove blockers or patch assignees to bypass it. A written summary or successful run alone does not complete this stage.
+
+Procedure 1 below applies only to a separate review-task/blocker workflow. Confirm the real review child, preserve unrelated blockers and respect mutation authorization. For creating or verifying either review assignment, use [PR Review Handoff](../pr-review-handoff/SKILL.md). Return code repairs to the original implementer; the reviewer remains independent. Re-review any changed PR head before treating approval as current.
 
 ## Procedure 1 — Post code review (Code Reviewer/Guardian)
 
@@ -45,6 +53,7 @@ Post **one** comment on the blocked task summarizing where the review stands:
 ## Code review status — <VERDICT>
 
 PR: <pr-url>
+Reviewed head: <full-commit-sha>
 Reviewer: Code Reviewer/Guardian
 
 Rejects (must fix):
