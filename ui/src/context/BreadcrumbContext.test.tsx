@@ -3,7 +3,7 @@
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { BreadcrumbProvider, buildDocumentTitle, useBreadcrumbs } from "./BreadcrumbContext";
+import { BreadcrumbProvider, buildDocumentTitle, taskStatusFavicon, useBreadcrumbs } from "./BreadcrumbContext";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
@@ -122,6 +122,37 @@ describe("BreadcrumbContext", () => {
       .toBe("ATA-123 — Fix login • Issues • Team • Paperclip");
     expect(buildDocumentTitle([{ label: "Inbox", identifier: "  " }])).toBe("Inbox • Paperclip");
     expect(buildDocumentTitle([{ label: "ATA-123", identifier: "  ATA-123  " }])).toBe("ATA-123 • Paperclip");
+  });
+
+  it("uses the requested badge colors and leaves other statuses unbadged", () => {
+    for (const [status, color] of [["blocked", "#dc2626"], ["todo", "#eab308"], ["in_progress", "#2563eb"], ["done", "#16a34a"], ["backlog", "#a8aeb2"], ["in_review", "#7c3aed"], ["cancelled", "#a8aeb2"]]) {
+      expect(decodeURIComponent(taskStatusFavicon(status)!)).toContain(`fill="${color}"`);
+    }
+    expect(taskStatusFavicon("unknown")).toBeNull();
+  });
+
+  it("updates the task favicon and restores original icons when leaving the task", () => {
+    const link = document.createElement("link");
+    link.rel = "icon";
+    link.href = "/favicon.png";
+    link.type = "image/png";
+    link.setAttribute("sizes", "32x32");
+    document.head.appendChild(link);
+    let update: ReturnType<typeof useBreadcrumbs>["setBreadcrumbs"] | undefined;
+    function Consumer() { update = useBreadcrumbs().setBreadcrumbs; return null; }
+    try {
+      act(() => root.render(<BreadcrumbProvider><Consumer /></BreadcrumbProvider>));
+      act(() => update?.([{ label: "Task", taskStatus: "blocked" }]));
+      expect(link.getAttribute("href")).toBe(taskStatusFavicon("blocked"));
+      expect(link.getAttribute("type")).toBe("image/svg+xml");
+      expect(link.getAttribute("sizes")).toBeNull();
+      act(() => update?.([{ label: "Task", taskStatus: "done" }]));
+      expect(link.getAttribute("href")).toBe(taskStatusFavicon("done"));
+      act(() => update?.([{ label: "Tasks" }]));
+      expect(link.getAttribute("href")).toBe("/favicon.png");
+      expect(link.getAttribute("type")).toBe("image/png");
+      expect(link.getAttribute("sizes")).toBe("32x32");
+    } finally { link.remove(); }
   });
 
   it("omits blank company names from page titles", () => {
