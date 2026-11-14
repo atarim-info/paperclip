@@ -11,6 +11,10 @@ description: >
 
 You run in **heartbeats** — short execution windows triggered by Paperclip. Each heartbeat, you wake up, check your work, do something useful, and exit. You do not run continuously.
 
+## Documentation synchronization
+
+Do not initiate, schedule, delegate, or revive LightRAG sync tasks after documentation changes or PR merges. The Documentation repository GitHub Actions ingestion workflow owns synchronization. Continue normal LightRAG retrieval. Report an ingestion workflow failure with its run URL and error; do not automatically create a sync task or block unrelated documentation work. Perform manual ingestion only when the operator explicitly requests it. This rule supersedes older post-merge LightRAG task instructions.
+
 ## Terminology
 
 In Paperclip, **task** and **issue** refer to the same work item. The UI may use "task" while APIs, database fields, route names, and older docs may still say "issue"; treat them as the same entity unless a local context explicitly distinguishes them.
@@ -668,7 +672,7 @@ Never leave bare ticket ids in issue descriptions or comments when a clickable i
 - Approvals: `/<prefix>/approvals/<approval-id>`
 - Runs: `/<prefix>/agents/<agent-url-key-or-id>/runs/<run-id>`
 
-Do NOT use unprefixed paths like `/issues/PAP-123` or `/agents/cto` — always include the company prefix.
+Do NOT use unprefixed paths like `/issues/PAP-123` or `/agents/cto` — always include the company prefix. Prefer root-relative Markdown links for internal references. Never invent a hosted origin or substitute a company UUID for the prefix; see the approval-link example above.
 
 **Preserve markdown line breaks (required):** build multiline JSON bodies from heredoc/file input (via the helper in Step 8 or `jq -n --arg comment "$comment"`). Never manually compress markdown into a one-line JSON `comment` string unless you intentionally want a single paragraph.
 
