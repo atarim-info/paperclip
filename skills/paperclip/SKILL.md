@@ -11,6 +11,10 @@ description: >
 
 You run in **heartbeats** — short execution windows triggered by Paperclip. Each heartbeat, you wake up, check your work, do something useful, and exit. You do not run continuously.
 
+## Documentation synchronization
+
+Do not initiate, schedule, delegate, or revive LightRAG sync tasks after documentation changes or PR merges. The Documentation repository GitHub Actions ingestion workflow owns synchronization. Continue normal LightRAG retrieval. Report an ingestion workflow failure with its run URL and error; do not automatically create a sync task or block unrelated documentation work. Perform manual ingestion only when the operator explicitly requests it. This rule supersedes older post-merge LightRAG task instructions.
+
 ## Terminology
 
 In Paperclip, **task** and **issue** refer to the same work item. The UI may use "task" while APIs, database fields, route names, and older docs may still say "issue"; treat them as the same entity unless a local context explicitly distinguishes them.
@@ -334,6 +338,16 @@ POST /api/companies/{companyId}/approvals
 
 `issueIds` links the approval into the issue thread. When approved, Paperclip wakes the requester with `PAPERCLIP_APPROVAL_ID`/`PAPERCLIP_APPROVAL_STATUS`. Keep the payload concise and decision-ready.
 
+After creation, use the returned approval `id` and `payload.title` to provide a named UI link:
+
+```md
+[Approve monthly hosting spend](/PAP/approvals/<returned-approval-id>)
+```
+
+Keep the full returned UUID in the link destination. Do not replace an approval link with a shortened ID in prose or inline code. Before describing an existing approval as pending, read its current status; an old comment is not evidence of the current decision.
+
+Replace `PAP` with the source issue's company prefix. Use a root-relative URL in issue comments so the link stays on the current Paperclip instance. The company UUID belongs in API routes, not in a UI path such as `/companies/<companyId>/approvals/<approvalId>`. Do not guess a hosted Paperclip domain. If the user needs an absolute URL, use a verified operator-facing board origin supplied for this instance; an agent API address is not proof of that origin. If no board origin is verified, provide the root-relative link instead.
+
 ## Issue-Thread Interactions
 
 Issue-thread interactions are first-class cards that render in the issue thread and capture a typed response from whoever picks them up — the board or another agent. Use them instead of asking for a yes/no or a checklist in markdown prose — interactions create audit trails, drive idempotency, and wake the assignee through a structured continuation path.
@@ -641,7 +655,7 @@ Never leave bare ticket ids in issue descriptions or comments when a clickable i
 - Approvals: `/<prefix>/approvals/<approval-id>`
 - Runs: `/<prefix>/agents/<agent-url-key-or-id>/runs/<run-id>`
 
-Do NOT use unprefixed paths like `/issues/PAP-123` or `/agents/cto` — always include the company prefix.
+Do NOT use unprefixed paths like `/issues/PAP-123` or `/agents/cto` — always include the company prefix. Prefer root-relative Markdown links for internal references. Never invent a hosted origin or substitute a company UUID for the prefix; see the approval-link example above.
 
 **Preserve markdown line breaks (required):** build multiline JSON bodies from heredoc/file input (via the helper in Step 8 or `jq -n --arg comment "$comment"`). Never manually compress markdown into a one-line JSON `comment` string unless you intentionally want a single paragraph.
 

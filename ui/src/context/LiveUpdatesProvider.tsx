@@ -270,11 +270,11 @@ function resolveIssueToastContext(
       issueRefs.some((ref) => issue.id === ref || issue.identifier === ref),
     );
   const cachedIssue = detailIssue ?? listIssue ?? null;
-  const ref =
+  const identifier =
     readString(details?.identifier) ??
     readString(details?.issueIdentifier) ??
-    cachedIssue?.identifier ??
-    `Task ${shortId(issueId)}`;
+    cachedIssue?.identifier;
+  const ref = identifier ?? `Task ${shortId(issueId)}`;
   const title =
     readString(details?.title) ??
     readString(details?.issueTitle) ??
@@ -284,7 +284,7 @@ function resolveIssueToastContext(
     ref,
     title,
     label: title ? `${ref} - ${truncate(title, 72)}` : ref,
-    href: `/issues/${cachedIssue?.identifier ?? issueId}`,
+    href: `/issues/${identifier ?? issueId}`,
   };
 }
 
@@ -1019,10 +1019,10 @@ function buildActivityToast(
       : "reopened"
     : null;
   const title = reopened
-    ? `${actor} reopened and commented on ${issue.ref}`
+    ? `${actor} reopened and commented on ${issue.label}`
     : updated
-      ? `${actor} commented and updated ${issue.ref}`
-      : `${actor} commented on ${issue.ref}`;
+      ? `${actor} commented and updated ${issue.label}`
+      : `${actor} commented on ${issue.label}`;
   const body = bodySnippet
     ? reopenedLabel
       ? `${reopenedLabel} - ${bodySnippet.replace(/^#+\s*/m, "").replace(/\n/g, " ")}`
@@ -1040,6 +1040,40 @@ function buildActivityToast(
     action: { label: `View ${issue.ref}`, href: issue.href },
     dedupeKey: `activity:${action}:${entityId}:${commentId ?? "na"}`,
   };
+}
+
+/** Resolve only eligible uncached comment notifications, using the viewer's API access. */
+async function hydrateIssueActivityToast(
+  queryClient: QueryClient,
+  companyId: string,
+  payload: Record<string, unknown>,
+  currentActor: { userId: string | null; agentId: string | null },
+  deliver: (toast: ToastInput) => void,
+  isCurrent: () => boolean,
+) {
+  const issueId = readString(payload.entityId);
+  if (!issueId) return;
+  try {
+    await queryClient.fetchQuery({
+      queryKey: queryKeys.issues.detail(issueId),
+      queryFn: async () => {
+        const issue = await issuesApi.get(issueId);
+        if (issue.companyId !== companyId || !issue.identifier || !issue.title) {
+          throw new Error("Task identity is unavailable for this company");
+        }
+        return issue;
+      },
+      // A fresh partial cache entry can still be missing the identity we need.
+      staleTime: 0,
+      retry: false,
+    });
+  } catch {
+    // Do not expose inaccessible titles or fall back to an opaque UUID toast.
+    return;
+  }
+  if (!isCurrent()) return;
+  const toast = buildActivityToast(queryClient, companyId, payload, currentActor);
+  if (toast) deliver(toast);
 }
 
 function buildJoinRequestToast(
@@ -1775,6 +1809,7 @@ function handleLiveEvent(
   pushToast: (toast: ToastInput) => string | null,
   gate: ToastGate,
   currentActor: { userId: string | null; agentId: string | null },
+  isCurrent: () => boolean = () => true,
 ) {
   if (event.companyId !== expectedCompanyId) return;
 
@@ -1888,7 +1923,20 @@ function handleLiveEvent(
         payload,
       )
     ) {
-      gatedPushToast(gate, pushToast, `activity:${action ?? "unknown"}`, toast);
+      const category = `activity:${action ?? "unknown"}`;
+      if (action === "issue.comment_added") {
+        const issueId = readString(payload.entityId)!;
+        const context = resolveIssueToastContext(queryClient, expectedCompanyId, issueId, readRecord(payload.details));
+        if (context.ref === `Task ${shortId(issueId)}` || !context.title) {
+          void hydrateIssueActivityToast(
+            queryClient, expectedCompanyId, payload, currentActor,
+            (resolvedToast) => gatedPushToast(gate, pushToast, category, resolvedToast),
+            isCurrent,
+          );
+          return;
+        }
+      }
+      gatedPushToast(gate, pushToast, category, toast);
     }
   }
 }
@@ -1978,6 +2026,7 @@ export function LiveUpdatesProvider({ children }: { children: ReactNode }) {
     observedRunOutcomes: new Set(),
   });
   const pathnameRef = useRef(location.pathname);
+  const navigationVersionRef = useRef(0);
   const { data: session, status: sessionStatus } = useQuery({
     queryKey: queryKeys.auth.session,
     queryFn: () => authApi.getSession(),
@@ -2020,6 +2069,7 @@ export function LiveUpdatesProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     pathnameRef.current = location.pathname;
+    navigationVersionRef.current += 1;
   }, [location.pathname]);
 
   useEffect(() => {
@@ -2129,10 +2179,12 @@ export function LiveUpdatesProvider({ children }: { children: ReactNode }) {
 
         try {
           const parsed = JSON.parse(raw) as LiveEvent;
+          const eventPathname = pathnameRef.current;
+          const eventNavigationVersion = navigationVersionRef.current;
           handleLiveEvent(
             coalescingClient,
             liveCompanyId,
-            pathnameRef.current,
+            eventPathname,
             parsed,
             pushToast,
             gateRef.current,
@@ -2140,6 +2192,8 @@ export function LiveUpdatesProvider({ children }: { children: ReactNode }) {
               userId: currentActorRef.current.userId,
               agentId: currentActorRef.current.agentId,
             },
+            () => !closed && socket === nextSocket && getPageVisibility().visible
+              && navigationVersionRef.current === eventNavigationVersion,
           );
           // Fan the raw event out to component subscribers after cache
           // handling so any reader sees fresh query data.

@@ -18,6 +18,8 @@ import { getCachedIssueDetail } from "../lib/issueDetailCache";
 import { queryKeys } from "../lib/queryKeys";
 import { parseIssueReferenceFromHref, remarkLinkIssueReferences } from "../lib/issue-reference";
 import { remarkLinkCaseReferences } from "../lib/case-reference";
+import { parseApprovalReference, remarkLinkApprovalReferences } from "../lib/approval-reference";
+import { MarkdownApprovalLink } from "./MarkdownApprovalLink";
 
 const CASE_HREF_RE = /^\/cases\/([A-Z][A-Z0-9]*-C\d+)$/i;
 
@@ -824,7 +826,7 @@ function MarkdownBodyImpl({
   // parent re-renders frequently (see PAP-10767). Memoize both so re-renders
   // that don't change the inputs are cheap and non-destructive.
   const remarkPlugins = useMemo<NonNullable<Options["remarkPlugins"]>>(() => {
-    const plugins: NonNullable<Options["remarkPlugins"]> = [remarkGfm, remarkDropHtmlComments];
+    const plugins: NonNullable<Options["remarkPlugins"]> = [remarkGfm, remarkDropHtmlComments, remarkLinkApprovalReferences];
     if (enableWikiLinks) {
       plugins.push(createRemarkWikiLinks({ wikiLinkRoot, resolveWikiLinkHref }));
     }
@@ -922,6 +924,11 @@ function MarkdownBodyImpl({
             {linkChildren}
           </MarkdownIssueLink>
         );
+      }
+
+      const approvalRef = parseApprovalReference(href);
+      if (approvalRef) {
+        return <MarkdownApprovalLink {...approvalRef}>{linkChildren}</MarkdownApprovalLink>;
       }
 
       const caseIdentifier = linkCaseReferences ? caseIdentifierFromHref(href) : null;
