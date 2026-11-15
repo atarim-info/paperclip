@@ -10,6 +10,8 @@ export interface Breadcrumb {
    * between the leading glyph and the label.
    */
   identifier?: string;
+  /** Task status used for the browser tab badge. */
+  taskStatus?: string;
   /** Optional node rendered before the label (e.g. a status glyph). */
   leading?: ReactNode;
   /**
@@ -60,6 +62,7 @@ function breadcrumbsEqual(left: Breadcrumb[], right: Breadcrumb[]) {
       || left[index]?.onClick !== right[index]?.onClick
       || left[index]?.href !== right[index]?.href
       || left[index]?.identifier !== right[index]?.identifier
+      || left[index]?.taskStatus !== right[index]?.taskStatus
       || left[index]?.leadingKey !== right[index]?.leadingKey
       || left[index]?.trailingKey !== right[index]?.trailingKey
       || left[index]?.controlKey !== right[index]?.controlKey
@@ -73,10 +76,32 @@ function breadcrumbsEqual(left: Breadcrumb[], right: Breadcrumb[]) {
 export function buildDocumentTitle(breadcrumbs: Breadcrumb[], companyName?: string | null) {
   const pageParts = breadcrumbs.length === 0
     ? []
-    : [...breadcrumbs].reverse().map((breadcrumb) => breadcrumb.label);
+    : [...breadcrumbs].reverse().map((breadcrumb) => {
+      const identifier = breadcrumb.identifier?.trim();
+      return identifier && identifier !== breadcrumb.label.trim()
+        ? `${identifier} — ${breadcrumb.label}`
+        : breadcrumb.label;
+    });
   const companyPart = companyName?.trim() ? [companyName.trim()] : [];
   const parts = [...pageParts, ...companyPart, "Paperclip"];
   return parts.join(" • ");
+}
+
+const taskStatusColors: Record<string, string> = {
+  backlog: "#a8aeb2",
+  in_review: "#7c3aed",
+  cancelled: "#a8aeb2",
+  blocked: "#dc2626",
+  todo: "#eab308",
+  in_progress: "#2563eb",
+  done: "#16a34a",
+};
+
+export function taskStatusFavicon(status?: string): string | null {
+  const color = status ? taskStatusColors[status] : undefined;
+  if (!color) return null;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><style>path{stroke:#18181b}@media(prefers-color-scheme:dark){path{stroke:#e4e4e7}}</style><path stroke-width="2" d="m16 6-8.414 8.586a2 2 0 0 0 2.829 2.829l8.414-8.586a4 4 0 1 0-5.657-5.657l-8.379 8.551a6 6 0 1 0 8.485 8.485l8.379-8.551"/><circle cx="19" cy="19" r="4.5" fill="white"/><circle cx="19" cy="19" r="3.5" fill="${color}"/></svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
 }
 
 export function BreadcrumbProvider({ children, companyName }: BreadcrumbProviderProps) {
@@ -105,6 +130,29 @@ export function BreadcrumbProvider({ children, companyName }: BreadcrumbProvider
   useEffect(() => {
     document.title = buildDocumentTitle(breadcrumbs, companyName);
   }, [breadcrumbs, companyName]);
+
+  useEffect(() => {
+    const status = breadcrumbs.at(-1)?.taskStatus;
+    const icon = taskStatusFavicon(status);
+    if (!icon) return;
+    const links = Array.from(document.querySelectorAll<HTMLLinkElement>('link[rel~="icon"]'));
+    const originals = links.map((link) => ({
+      link, href: link.getAttribute("href"), type: link.getAttribute("type"), sizes: link.getAttribute("sizes"),
+    }));
+    for (const { link } of originals) {
+      link.setAttribute("href", icon);
+      link.setAttribute("type", "image/svg+xml");
+      link.removeAttribute("sizes");
+    }
+    return () => {
+      for (const { link, href, type, sizes } of originals) {
+        for (const [name, value] of [["href", href], ["type", type], ["sizes", sizes]] as const) {
+          if (value === null) link.removeAttribute(name);
+          else link.setAttribute(name, value);
+        }
+      }
+    };
+  }, [breadcrumbs]);
 
   return (
     <BreadcrumbContext.Provider

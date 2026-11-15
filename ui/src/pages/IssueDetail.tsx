@@ -5983,6 +5983,7 @@ export function TaskDetailSurface({ conversation, tasksTab }: { tasksTab?: TaskS
         // no redundant 🔵 emoji prefix on the title.
         label: breadcrumbTitle,
         identifier: breadcrumbIdentifier,
+        taskStatus: breadcrumbStatus,
         leading: breadcrumbStatusLeading,
         leadingKey: breadcrumbStatusKey,
       },
@@ -5992,6 +5993,7 @@ export function TaskDetailSurface({ conversation, tasksTab }: { tasksTab?: TaskS
     coordinatorWorkspaceEnabled,
     breadcrumbTitle,
     breadcrumbIdentifier,
+    breadcrumbStatus,
     hasLiveRuns,
     setBreadcrumbs,
     sourceBreadcrumb.href,
