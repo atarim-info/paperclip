@@ -79,7 +79,7 @@ export function buildDocumentTitle(breadcrumbs: Breadcrumb[], companyName?: stri
     : [...breadcrumbs].reverse().map((breadcrumb) => {
       const identifier = breadcrumb.identifier?.trim();
       return identifier && identifier !== breadcrumb.label.trim()
-        ? `${identifier} — ${breadcrumb.label}`
+        ? `${identifier} - ${breadcrumb.label}`
         : breadcrumb.label;
     });
   const companyPart = companyName?.trim() ? [companyName.trim()] : [];

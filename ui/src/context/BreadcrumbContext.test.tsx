@@ -87,7 +87,7 @@ describe("BreadcrumbContext", () => {
     });
 
     expect(renderCounts).toHaveLength(2);
-    expect(document.title).toBe("PAP-1204 — First task prompt • Paperclip");
+    expect(document.title).toBe("PAP-1204 - First task prompt • Paperclip");
 
     // Same everything but a new identifier must produce a fresh render.
     act(() => {
@@ -95,7 +95,7 @@ describe("BreadcrumbContext", () => {
     });
 
     expect(renderCounts).toHaveLength(3);
-    expect(document.title).toBe("PAP-1205 — First task prompt • Paperclip");
+    expect(document.title).toBe("PAP-1205 - First task prompt • Paperclip");
 
     // Identical identifier is a no-op.
     act(() => {
@@ -119,7 +119,7 @@ describe("BreadcrumbContext", () => {
 
   it("includes task identifiers in breadcrumb order", () => {
     expect(buildDocumentTitle([{ label: "Issues" }, { label: "Fix login", identifier: "ATA-123" }], "Team"))
-      .toBe("ATA-123 — Fix login • Issues • Team • Paperclip");
+      .toBe("ATA-123 - Fix login • Issues • Team • Paperclip");
     expect(buildDocumentTitle([{ label: "Inbox", identifier: "  " }])).toBe("Inbox • Paperclip");
     expect(buildDocumentTitle([{ label: "ATA-123", identifier: "  ATA-123  " }])).toBe("ATA-123 • Paperclip");
   });
