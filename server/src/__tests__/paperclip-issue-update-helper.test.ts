@@ -119,6 +119,60 @@ describe("paperclip issue update helper", () => {
     expect(JSON.parse(requests[0]?.body ?? "{}")).toEqual({ status: "done", comment: "closing note" });
   });
 
+  it("records an explicit review verdict and verifies the persisted task status", async () => {
+    const { baseUrl, requests } = await startServer((request, _attempt, res) => {
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ id: "issue-1", status: "done" }));
+    });
+    const result = await runHelper(baseUrl, ["--issue-id", "issue-1", "--status", "done", "--review-verdict", "CHANGES REQUESTED", "--reviewed-sha", "a".repeat(40), "--comment", "Conflict prevents merge; see review evidence."]);
+    expect(result.code).toBe(0);
+    expect(requests.map(r => r.method)).toEqual(["PATCH", "GET"]);
+    expect(JSON.parse(requests[0]!.body)).toMatchObject({ status: "done", comment: expect.stringContaining("CHANGES REQUESTED") });
+    expect(JSON.parse(requests[0]!.body).comment).toContain("a".repeat(40));
+  });
+
+  it.each([
+    ["--review-verdict", "APPROVED"],
+    ["--review-verdict", "MAYBE", "--reviewed-sha", "a".repeat(40)],
+    ["--review-verdict", "APPROVED", "--reviewed-sha", "bad-sha"],
+  ])("rejects incomplete or invalid structured review input", async (...args) => {
+    const result = await runHelper("", ["--issue-id", "issue-1", "--status", "done", "--comment", "evidence", "--dry-run", ...args]);
+    expect(result.code).not.toBe(0);
+    expect(result.stderr).toContain("Review completion requires");
+  });
+
+  it("does not replay an ambiguous review write that may have committed", async () => {
+    const { baseUrl, requests } = await startServer((_request, _attempt, res) => {
+      res.writeHead(503, { "content-type": "application/json" });
+      res.end(JSON.stringify({ error: "unavailable" }));
+    });
+    const result = await runHelper(baseUrl, ["--issue-id", "issue-1", "--status", "done", "--review-verdict", "APPROVED", "--reviewed-sha", "a".repeat(40), "--comment", "evidence"]);
+    expect(result.code).not.toBe(0);
+    expect(result.stderr).toContain("outcome is unknown");
+    expect(requests).toHaveLength(1);
+  });
+
+  it("treats an empty successful response as an unknown review-write outcome", async () => {
+    const { baseUrl, requests } = await startServer((_request, _attempt, res) => {
+      res.writeHead(200, { "content-length": "0" });
+      res.end();
+    });
+    const result = await runHelper(baseUrl, ["--issue-id", "issue-1", "--status", "done", "--review-verdict", "APPROVED", "--reviewed-sha", "a".repeat(40), "--comment", "evidence"]);
+    expect(result.code).not.toBe(0);
+    expect(result.stderr).toContain("outcome is unknown");
+    expect(requests).toHaveLength(1);
+  });
+
+  it("reports a non-persisted result when review status readback disagrees", async () => {
+    const { baseUrl } = await startServer((request, _attempt, res) => {
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ id: "issue-1", status: request.method === "GET" ? "in_progress" : "done" }));
+    });
+    const result = await runHelper(baseUrl, ["--issue-id", "issue-1", "--status", "done", "--review-verdict", "APPROVED", "--reviewed-sha", "b".repeat(40), "--comment", "Reviewed evidence."]);
+    expect(result.code).not.toBe(0);
+    expect(result.stderr).toContain("readback");
+  });
+
   it.each([".claude/skills", "codex-home/skills"])(
     "delivers the bundled helper through %s from an unrelated workspace", async skillsHome => {
       const root = await fs.mkdtemp(path.join(os.tmpdir(), "paperclip completion helper "));
