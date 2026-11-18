@@ -107,6 +107,30 @@ describe("OpenCode local skill injection", () => {
     expect(prompts[1]).toContain("Connection tools:");
   });
 
+  it.each([false, true])("includes current agent instructions on every turn (resumed=%s)", async (resumed) => {
+    const commandPath = path.join(configHome, "fake-opencode-instructions");
+    const instructionsPath = path.join(configHome, "AGENTS.md");
+    await fs.writeFile(commandPath, "#!/bin/sh\nexit 0\n", { mode: 0o755 });
+    await fs.writeFile(instructionsPath, "Current closeout policy: verify the persisted task status.");
+    runProcessMock.mockReset().mockResolvedValue(probeResult({ stdout: JSON.stringify({
+      type: "text", sessionID: "instructions-session", part: { text: "done" },
+    }) }));
+    let prompt = "";
+    let metrics: Record<string, unknown> = {};
+    await execute({
+      runId: "run-instructions",
+      agent: { id: "agent-1", companyId: "company-1", name: "Reviewer", adapterType: "opencode_local", adapterConfig: {} },
+      runtime: { sessionId: resumed ? "previous" : null, sessionParams: null, sessionDisplayId: null, taskKey: null },
+      config: { command: commandPath, cwd: configHome, instructionsFilePath: instructionsPath,
+        model: "openai/gpt-5", env: { OPENCODE_ALLOW_ALL_MODELS: "1" } },
+      context: createPromptContextFixture(),
+      onLog: async () => {},
+      onMeta: async (meta) => { prompt = String(meta.prompt ?? ""); metrics = (meta.promptMetrics ?? {}) as Record<string, unknown>; },
+    });
+    expect(prompt).toContain("Current closeout policy: verify the persisted task status.");
+    expect(Number(metrics.instructionsChars)).toBeGreaterThan(0);
+  });
+
   it("injects runtime skills into the configured child HOME", async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), "paperclip-opencode-configured-home-"));
     const processHome = path.join(root, "process-home");
