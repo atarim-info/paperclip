@@ -12,6 +12,7 @@ import {
   companies,
   createDb,
   environmentLeases,
+  heartbeatRunEvents,
   heartbeatRuns,
   issueComments,
   issues,
@@ -143,10 +144,7 @@ describe("report-only ownership reconciliation", () => {
     expect(new Set(names).size).toBe(names.length);
     expect(names.length).toBeGreaterThanOrEqual(40);
     expect(OWNABLE_KINDS.filter(kind => kind.settle !== null).map(kind => kind.id))
-      .toEqual(["native_accepted_result_lease", "native_finalizer_lease", "native_cleanup_lease", "sandbox_creation_intent",
-        "environment_run_lease_active", "environment_teardown_claim", "environment_retained_orphan_sandbox",
-        "native_workspace_finalize_attempt", "wake_request_claimed", "legacy_controller_lease",
-        "issue_execution_lock", "issue_checkout_lock"]);
+      .toEqual(["native_accepted_result_lease", "native_finalizer_lease", "native_cleanup_lease", "sandbox_creation_intent", "environment_run_lease_active", "environment_teardown_claim", "environment_retained_orphan_sandbox", "environment_login_probe_lease", "workspace_runtime_control_operation", "native_workspace_finalize_attempt", "execution_workspace_runtime_lease", "legacy_shutdown_settlement_fence", "copyback_owner_hold", "observed_workspace_preservation_fence", "wake_request_claimed", "legacy_controller_lease", "legacy_interrupted_preparation_hold", "issue_execution_lock", "issue_checkout_lock", "agent_lifecycle_lease"]);
     expect(OWNABLE_KINDS.filter(kind => !kind.listInProgress).every(kind => kind.coverageGap)).toBe(true);
   });
 
@@ -468,6 +466,36 @@ describe("report-only ownership reconciliation", () => {
       contextSnapshot: { issueId }, startedAt: minutesAgo(1), createdAt: minutesAgo(1), finishedAt: new Date() });
     const later = await runOwnershipReconciliationPass(db, { state: createOwnershipReportState(), record: false });
     expect(later.violations.filter(row => row.reason === "user_comment_without_wake")).toEqual([]);
+  });
+
+  it("finds a user comment that a restart left without a wake on a task its agent then closed", async () => {
+    const closedTask = async (actorType: "agent" | "user") => {
+      const issueId = randomUUID();
+      await db.insert(issues).values({ id: issueId, companyId, title: `Closed by ${actorType}`, status: "done", assigneeAgentId: agentId });
+      const [run] = await db.insert(heartbeatRuns).values({ companyId, agentId, status: "succeeded", invocationSource: "manual",
+        runtimeMode: "native", contextSnapshot: { issueId }, startedAt: minutesAgo(6), createdAt: minutesAgo(6), finishedAt: minutesAgo(1) })
+        .returning();
+      const [comment] = await db.insert(issueComments).values({ companyId, issueId, authorUserId: "user-1",
+        body: "also add a follow-up line", createdAt: minutesAgo(4) }).returning();
+      await db.insert(activityLog).values({ companyId, actorType, actorId: actorType === "agent" ? agentId : "user-1",
+        action: "issue.updated", entityType: "issue", entityId: issueId, details: { toStatus: "done" }, createdAt: minutesAgo(1) });
+      return { issueId, runId: run!.id, commentId: comment!.id };
+    };
+    const lost = await closedTask("agent");
+    const steered = await closedTask("agent");
+    const goalSteered = await closedTask("agent");
+    const personClosed = await closedTask("user");
+    await db.insert(heartbeatRunEvents).values([
+      { companyId, runId: steered.runId, agentId, seq: 1, eventType: "item.completed", stream: "system", level: "info",
+        sourceEventId: randomUUID(), payload: { prpEvent: { itemId: `provider-item-9f2:steer:${steered.commentId}`,
+          payload: { kind: "steering_acknowledgement" } } } },
+      { companyId, runId: goalSteered.runId, agentId, seq: 1, eventType: "item.started", stream: "system", level: "info",
+        sourceEventId: randomUUID(), payload: { prpEvent: { itemId: "msg_provider_generated_7c1",
+          payload: { kind: "userMessage", commandId: `goal_comment_${goalSteered.commentId}` } } } },
+    ]);
+    const report = await runOwnershipReconciliationPass(db, { state: createOwnershipReportState(), record: false });
+    expect(report.violations.filter(row => row.reason === "user_comment_without_wake").map(row => row.recordId))
+      .toEqual([lost.commentId]);
   });
 
   it("keeps a backstop deadline for a lifted pause still inside its grace window", async () => {
