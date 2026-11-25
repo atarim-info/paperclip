@@ -597,19 +597,12 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
         sessionHandoffNote,
         renderedPrompt,
       ];
-      // Fork-only optimization: on a resumed session the agent instructions
-      // (config.instructionsFilePath / AGENTS.md) are already present in the
-      // replayed conversation history, so re-prepending them each heartbeat
-      // re-bills the same tokens on gateways that don't cache the prompt
-      // prefix. Fresh runs (incl. the unknown-session fallback) still get them.
-      const basePrompt = joinPromptSections(
-        resumedSession ? promptSections.slice(1) : promptSections,
-      );
+      const basePrompt = joinPromptSections(promptSections);
       return {
         basePrompt,
         promptMetrics: {
           promptChars: basePrompt.length,
-          instructionsChars: resumedSession ? 0 : instructionsPrefix.length,
+          instructionsChars: instructionsPrefix.length,
           bootstrapPromptChars: renderedBootstrapPrompt.length,
           wakePromptChars: wakePrompt.length,
           taskContextChars: taskContextNote.length,
