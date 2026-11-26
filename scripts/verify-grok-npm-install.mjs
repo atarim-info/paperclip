@@ -12,8 +12,7 @@ import { stripTypeScriptTypes } from 'node:module';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { packConcurrency, packStagedPackages, packTimings } from './pack-staged-packages.mjs';
-import { materializePublishManifest } from './prepare-bundled-package.mjs';
-import { publicInstallClosure } from './public-install-closure.mjs';
+import { publicInstallClosure, publicInstallManifest } from './public-install-closure.mjs';
 import { GROK_PUBLIC_INSTALL_IMAGE, GROK_PUBLIC_INSTALL_LIFECYCLE, assertInstalledNativeConsumerContinuity, assertNoBundledCodexPayloads, grokConsumerDockerArgs, grokPublicInstallVersion, installedClaudeProbeSource, installedCodexProbeSource, installedDaemonProbeSource, macNodeHeadersDirectory, macPublicInstallLifecycleProfile, macInstalledStartupProbeSource, runMacInitialInstallWithDiagnostics } from './grok-public-install-sandbox.mjs';
 import { startPrefetch, stopPrefetches } from './prefetch-child.mjs';
 import { retainRunnerQualificationPackages } from './retain-runner-qualification-packages.mjs';
@@ -303,7 +302,7 @@ try {
     const releaseManifest = stageSource(entry);
     mkdirSync(entry.target);
     cpSync(entry.stagedSource, entry.target, { recursive: true });
-    writeFileSync(join(entry.target, 'package.json'), JSON.stringify(materializePublishManifest(releaseManifest)));
+    writeFileSync(join(entry.target, 'package.json'), JSON.stringify(publicInstallManifest(repo, entry.name, releaseManifest, releaseVersion)));
   }
   timing.stage_sources_ms = Math.round(performance.now() - sourcesStarted);
   await awaited('bundled', Promise.all(installs.map(({ handle }) => handle.done)));
