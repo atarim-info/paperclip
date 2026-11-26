@@ -19,6 +19,7 @@ export default defineConfig({
       "packages/adapters/cursor-cloud",
       "packages/adapters/cursor-local",
       "packages/adapters/crush-local",
+      "packages/adapters/freebuff-local",
       "packages/adapters/gemini-local",
       "packages/adapters/grok-local",
       "packages/adapters/hermes",
