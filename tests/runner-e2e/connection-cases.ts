@@ -20,6 +20,9 @@ export type ConnectionHarness = typeof connectionHarnesses[number];
 
 /** Inventory entries remain visible even when no live journey can be selected. */
 export const connectionScopeGaps = [
+  { adapter: "crush_local", status: "excluded", reason: "Fork adapter has no live connection qualification in this suite." },
+  { adapter: "kilocode_local", status: "excluded", reason: "Fork adapter has no live connection qualification in this suite." },
+  { adapter: "mimo_local", status: "excluded", reason: "Fork adapter has no live connection qualification in this suite." },
   { adapter: "cursor", status: "unsupported", reason: "No managed connection flow; qualify the harness-specific login separately." },
   { adapter: "kimi_local", status: "unsupported", reason: "No managed connection flow; harness-specific credentials remain outside this suite." },
   { adapter: "pi_local", status: "unsupported", reason: "No managed connection flow or qualified model source." },
