@@ -254,7 +254,7 @@ importers:
         version: 1.1.1
     devDependencies:
       '@types/node':
-        specifier: ^24.6.0
+        specifier: ^24.0.0
         version: 24.13.3
       typescript:
         specifier: ^5.7.3
@@ -305,7 +305,7 @@ importers:
         version: 1.1.1
     devDependencies:
       '@types/node':
-        specifier: ^24.6.0
+        specifier: ^24.0.0
         version: 24.13.3
       typescript:
         specifier: ^5.7.3
@@ -391,7 +391,7 @@ importers:
         version: 1.1.1
     devDependencies:
       '@types/node':
-        specifier: ^24.6.0
+        specifier: ^24.0.0
         version: 24.13.3
       typescript:
         specifier: ^5.7.3
@@ -423,7 +423,7 @@ importers:
         version: 1.1.1
     devDependencies:
       '@types/node':
-        specifier: ^24.6.0
+        specifier: ^24.0.0
         version: 24.13.3
       typescript:
         specifier: ^5.7.3
