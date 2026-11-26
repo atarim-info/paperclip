@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { isPrivateFreebuffMaterialized } from './release-package-map.mjs';
 
 export const PUBLIC_INSTALL_ROOTS = ['@paperclipai/server', 'paperclipai'];
 
@@ -21,8 +22,10 @@ export function publicInstallClosure(repo, roots = PUBLIC_INSTALL_ROOTS) {
   function visit(name) {
     if (needed.has(name)) return;
     const entry = packages.get(name); assert.ok(entry, `Missing public workspace dependency ${name}`); needed.add(name);
-    for (const [dep, spec] of Object.entries({ ...entry.manifest.dependencies, ...entry.manifest.optionalDependencies })) {
-      if (spec.startsWith('workspace:')) visit(dep);
+    for (const section of ['dependencies', 'optionalDependencies']) {
+      for (const [dep, spec] of Object.entries(entry.manifest[section] ?? {})) {
+        if (spec.startsWith('workspace:') && !isPrivateFreebuffMaterialized(entry.manifest, dep, section)) visit(dep);
+      }
     }
   }
   for (const root of roots) visit(root);

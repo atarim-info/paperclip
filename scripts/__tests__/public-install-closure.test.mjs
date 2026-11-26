@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { PUBLIC_INSTALL_ROOTS, publicInstallClosure, publicRegistryDependencies } from '../public-install-closure.mjs';
+import { isPrivateFreebuffMaterialized } from '../release-package-map.mjs';
 
 const repo = fileURLToPath(new URL('../../', import.meta.url));
 
@@ -15,8 +16,10 @@ test('the closure starts at the server and the CLI and follows only workspace sp
   assert.ok(needed.has('paperclipai'));
   for (const name of needed) {
     const { manifest } = packages.get(name);
-    for (const [dep, spec] of Object.entries({ ...manifest.dependencies, ...manifest.optionalDependencies })) {
-      assert.equal(needed.has(dep), spec.startsWith('workspace:'), `${name} -> ${dep}@${spec}`);
+    for (const section of ['dependencies', 'optionalDependencies']) {
+      for (const [dep, spec] of Object.entries(manifest[section] ?? {})) {
+        assert.equal(needed.has(dep), spec.startsWith('workspace:') && !isPrivateFreebuffMaterialized(manifest, dep, section), `${name} -> ${dep}@${spec}`);
+      }
     }
   }
 });

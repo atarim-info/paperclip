@@ -601,6 +601,7 @@ test("server package staging applies every bundled runtime patch and preserves t
   mkdirSync(join(privateAdapter, "dist"), { recursive: true });
   writeFileSync(join(privateAdapter, "package.json"), JSON.stringify({ name: "@paperclipai/adapter-freebuff-local", version: "0.1.0", files: ["dist"] }));
   writeFileSync(join(privateAdapter, "dist/index.js"), "export {};\n");
+  mkdirSync(join(privateAdapter, "dist/server")); writeFileSync(join(privateAdapter, "dist/server/index.js"), "export {};\n");
   writeFileSync(join(fixtureSourceRoot, "packages/paperclip-runner/acpx-profiles.json"), JSON.stringify(profileData));
   mkdirSync(join(fixtureSourceRoot, "patches"));
   for (const patchPath of Object.values(rootPackage.pnpm.patchedDependencies)) {
