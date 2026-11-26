@@ -385,7 +385,7 @@ export function stagePrivateFreebuff(destinationDir, publishManifest, { sourceRo
   }
   const source = resolve(sourceRoot, "packages/adapters/freebuff-local");
   const pkg = JSON.parse(readFileSync(resolve(source, "package.json"), "utf8"));
-  if (pkg.name !== privateFreebuffName || !existsSync(resolve(source, "dist/index.js"))) {
+  if (pkg.name !== privateFreebuffName || (!existsSync(resolve(source, "dist/index.js")) || !existsSync(resolve(source, "dist/server/index.js")))) {
     throw new Error("Private Freebuff build is missing or has the wrong identity");
   }
   const staged = materializePublishManifest({ ...pkg, version: publishManifest.version });

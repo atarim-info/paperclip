@@ -20,6 +20,7 @@ test("offline consumer loads the unpublished bundled adapter", t => {
   mkdirSync(join(serverSource, "dist"), { recursive: true }); mkdirSync(consumer, { recursive: true });
   writeFileSync(join(sourceRoot, "package.json"), "{}");
   writeFileSync(join(source, "dist", "index.js"), "module.exports = 42;\n");
+  mkdirSync(join(source, "dist", "server")); writeFileSync(join(source, "dist", "server", "index.js"), "module.exports = 42;\n");
   writeFileSync(join(source, "package.json"), JSON.stringify({ name: adapterName, version: "0.1.0", files: ["dist"], main: "dist/index.js" }));
   const manifest = { name: "paperclip-private-server-fixture", version: "1.2.3", main: "dist/index.js", files: ["dist"], dependencies: { [adapterName]: "1.2.3" }, bundleDependencies: [adapterName] };
   writeFileSync(join(serverSource, "package.json"), JSON.stringify(manifest));
@@ -31,6 +32,8 @@ test("offline consumer loads the unpublished bundled adapter", t => {
   execFileSync("npm", ["install", "--offline", "--ignore-scripts", "--no-audit", "--no-fund", join(root, "paperclip-private-server-fixture-1.2.3.tgz")], { cwd: consumer });
   const result = execFileSync(process.execPath, ["-e", "console.log(require('paperclip-private-server-fixture'))"], { cwd: consumer, encoding: "utf8" });
   assert.equal(result.trim(), "42");
+  rmSync(join(source, "dist", "server", "index.js"));
+  assert.throws(() => stagePrivateFreebuff(join(root, "incomplete"), manifest, { sourceRoot }), /build is missing/);
 });
 
 test("missing private adapter build fails closed", t => {
@@ -49,6 +52,7 @@ test("private adapter dependencies must match those installed by the server", t 
   const source = join(root, "packages", "adapters", "freebuff-local");
   mkdirSync(join(source, "dist"), { recursive: true });
   writeFileSync(join(source, "dist", "index.js"), "module.exports = 1");
+  mkdirSync(join(source, "dist", "server")); writeFileSync(join(source, "dist", "server", "index.js"), "module.exports = 1");
   writeFileSync(join(source, "package.json"), JSON.stringify({ name: adapterName, files: ["dist"], dependencies: { "fixture-runtime": "^1.0.0" } }));
   const manifest = { version: "1.0.0", bundleDependencies: [adapterName], dependencies: { [adapterName]: "1.0.0", "fixture-runtime": "^2.0.0" } };
   assert.throws(() => stagePrivateFreebuff(join(root, "dest"), manifest, { sourceRoot: root }), /fixture-runtime/);
