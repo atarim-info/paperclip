@@ -5,6 +5,7 @@ import type { AdapterExecutionContext, AdapterExecutionResult } from "@paperclip
 import {
   asString,
   buildPaperclipEnv,
+  buildRuntimeToolsEnv,
   joinPromptSections,
   renderPaperclipWakePrompt,
   renderTemplate,
@@ -69,7 +70,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     });
   }
 
-  const env = { ...currentEnv(), ...buildPaperclipEnv(ctx.agent) };
+  const env = { ...currentEnv(), ...buildPaperclipEnv(ctx.agent), ...buildRuntimeToolsEnv(ctx.runtimeTools) };
   const chatsDir = freebuffProjectChatsDir(cwd, homeDir);
   const pty = spawnFreebuffPty({
     command: runConfig.command,

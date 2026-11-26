@@ -1038,6 +1038,7 @@ const openCodeLocalAdapter: ServerAdapterModule = {
 
 const freebuffLocalAdapter: ServerAdapterModule = {
   type: "freebuff_local",
+  runtimeToolDelivery: "environment",
   execute: freebuffExecute,
   testEnvironment: freebuffTestEnvironment,
   sessionCodec: freebuffSessionCodec,
@@ -1050,6 +1051,7 @@ const freebuffLocalAdapter: ServerAdapterModule = {
 
 const crushLocalAdapter: ServerAdapterModule = {
   type: "crush_local",
+  runtimeToolDelivery: "environment",
   execute: crushExecute,
   testEnvironment: crushTestEnvironment,
   listSkills: listCrushSkills,
@@ -1069,6 +1071,7 @@ const crushLocalAdapter: ServerAdapterModule = {
 
 const kilocodeLocalAdapter: ServerAdapterModule = {
   type: "kilocode_local",
+  runtimeToolDelivery: "environment",
   execute: kiloExecute,
   testEnvironment: kiloTestEnvironment,
   listSkills: listKiloSkills,
@@ -1088,6 +1091,7 @@ const kilocodeLocalAdapter: ServerAdapterModule = {
 
 const mimoLocalAdapter: ServerAdapterModule = {
   type: "mimo_local",
+  runtimeToolDelivery: "environment",
   execute: mimoExecute,
   testEnvironment: mimoTestEnvironment,
   listSkills: listMimoSkills,

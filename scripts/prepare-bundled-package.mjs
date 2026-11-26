@@ -374,6 +374,40 @@ export function applyBundledDependencyPatches(destinationDir, bundledDependencie
   }
 }
 
+const privateFreebuffName = "@paperclipai/adapter-freebuff-local";
+
+// Stage real built files, never a workspace symlink. Its runtime dependencies
+// must be declared by the parent package so npm installs the shared closure.
+export function stagePrivateFreebuff(destinationDir, publishManifest, { sourceRoot = repoRoot } = {}) {
+  if (!publishManifest.bundleDependencies?.includes(privateFreebuffName) ||
+      publishManifest.dependencies?.[privateFreebuffName] !== publishManifest.version) {
+    throw new Error("Private Freebuff bundle must match the parent release version");
+  }
+  const source = resolve(sourceRoot, "packages/adapters/freebuff-local");
+  const pkg = JSON.parse(readFileSync(resolve(source, "package.json"), "utf8"));
+  if (pkg.name !== privateFreebuffName || !existsSync(resolve(source, "dist/index.js"))) {
+    throw new Error("Private Freebuff build is missing or has the wrong identity");
+  }
+  const staged = materializePublishManifest({ ...pkg, version: publishManifest.version });
+  for (const [name, specifier] of Object.entries(staged.dependencies ?? {})) {
+    if (publishManifest.dependencies?.[name] !== specifier) throw new Error(`Private Freebuff dependency ${name} must match the server`);
+  }
+  const checkBuiltFiles = dir => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const file = resolve(dir, entry.name);
+      if (entry.isSymbolicLink()) throw new Error("Private Freebuff build must not contain symlinks");
+      if (entry.isDirectory()) checkBuiltFiles(file);
+      else if (!entry.isFile()) throw new Error("Private Freebuff build contains an unsupported file");
+    }
+  };
+  checkBuiltFiles(resolve(source, "dist"));
+  const destination = resolve(destinationDir, "node_modules", privateFreebuffName);
+  mkdirSync(destination, { recursive: true });
+  cpSync(resolve(source, "dist"), resolve(destination, "dist"), { recursive: true });
+  delete staged.devDependencies;
+  writeFileSync(resolve(destination, "package.json"), `${JSON.stringify(staged, null, 2)}\n`);
+}
+
 export function prepareBundledPackage(sourceDir, destinationDir, { sourceRoot = repoRoot } = {}) {
   const sourcePackagePath = resolve(sourceDir, "package.json");
   const sourcePackage = JSON.parse(readFileSync(sourcePackagePath, "utf8"));
@@ -401,6 +435,11 @@ export function prepareBundledPackage(sourceDir, destinationDir, { sourceRoot = 
   const { installManifest, profiles } = configureBundledProviderOverrides(
     createBundledInstallManifest(publishManifest, bundledDependencies), bundledDependencies, rootPackage, profileData,
   );
+  // The private adapter is staged from built workspace files after npm install.
+  if (bundledDependencies.includes(privateFreebuffName)) {
+    delete installManifest.dependencies[privateFreebuffName];
+    installManifest.bundleDependencies = bundledDependencies.filter(name => name !== privateFreebuffName);
+  }
   writeFileSync(deployedPackagePath, `${JSON.stringify(installManifest, null, 2)}\n`);
 
   execFileSync(
@@ -409,6 +448,7 @@ export function prepareBundledPackage(sourceDir, destinationDir, { sourceRoot = 
     { cwd: destinationDir, stdio: "inherit" },
   );
   writeFileSync(deployedPackagePath, `${JSON.stringify(publishManifest, null, 2)}\n`);
+  if (bundledDependencies.includes(privateFreebuffName)) stagePrivateFreebuff(destinationDir, publishManifest, { sourceRoot });
   applyBundledDependencyPatches(destinationDir, bundledDependencies, sourceRoot);
   if (profiles.length) writeFileSync(deployedPackagePath, `${JSON.stringify(stageBundledProviderOptionalDependencies(destinationDir, publishManifest, profiles), null, 2)}\n`);
 

@@ -87,9 +87,11 @@ describe("crush execute (local)", () => {
     const workspaceDir = await mkdtemp(path.join(os.tmpdir(), "paperclip-crush-ws-"));
     cleanupDirs.push(workspaceDir);
     const meta: Array<Record<string, unknown>> = [];
+    const logs: string[] = [];
 
     const result = await execute({
       runId: "run-1",
+      runtimeTools: { version: 1, guidance: "guidance", mcpEndpoint: "https://example.test/mcp", rest: { connectionsSearch: "https://example.test/search", connectionRequest: "https://example.test/request" }, bearerToken: "test-token", expiresAt: "2030-01-01T00:00:00Z", tools: ["connections_search", "connection_request"] },
       agent: {
         id: "agent-1",
         companyId: "company-1",
@@ -114,7 +116,7 @@ describe("crush execute (local)", () => {
           source: "project_primary",
         },
       },
-      onLog: async () => {},
+      onLog: async (_stream, chunk) => { logs.push(chunk); },
       onMeta: async (entry) => {
         meta.push(entry as unknown as Record<string, unknown>);
       },
@@ -140,6 +142,10 @@ describe("crush execute (local)", () => {
     const runCall = runChildProcess.mock.calls.find(
       (entry) => Array.isArray(entry[2]) && entry[2].includes("run"),
     );
+    const runOptions = (runCall as unknown as [unknown, unknown, unknown, { env: Record<string, string> }])[3];
+    expect(runOptions.env.PAPERCLIP_RUNTIME_TOOLS_TOKEN).toBe("test-token");
+    expect(runOptions.env.PAPERCLIP_RUNTIME_TOOLS_MCP_URL).toBe("https://example.test/mcp");
+    expect(logs.join("\n")).not.toContain("test-token");
     expect(runCall?.[2]).toContain("-m");
     // crushRunModel strips the provider prefix for the `-m` flag (bare name)
     expect(runCall?.[2]).toContain("gpt-4.1");

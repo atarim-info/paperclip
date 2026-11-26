@@ -127,6 +127,9 @@ describe("live connection coverage", () => {
     expect(AGENT_ADAPTER_TYPES.filter(type => !inventory.has(type))).toEqual([]);
     expect(connectionHarnesses.some(h => h.adapter === "hermes_local")).toBe(true);
     expect(connectionScopeGaps.find(h => h.adapter === "hermes_gateway")?.status).toBe("excluded");
+    for (const adapter of ["crush_local", "kilocode_local", "mimo_local"]) {
+      expect(connectionScopeGaps.find(h => h.adapter === adapter)?.status).toBe("excluded");
+    }
   });
   it("includes both UI entry points and actual runner variants without invented auth capabilities", () => {
     expect(cells.length).toBe(116);

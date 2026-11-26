@@ -1,14 +1,6 @@
 ---
 name: code-review-guardian
-description: >
-  Company-wide post-code-review and post-merge procedures for Paperclip agents.
-  Use when a code review verdict lands on a pull request (approved or rejected),
-  when review rejects must be routed back to a blocked task, when releasing a
-  review block and handing work back to the responsible agent, when asking the
-  board to approve a PR, or when a PR is merged (checkout main and open a
-  graphify update task for the dedicated Graphify agent). Triggers: code review
-  done, review rejected, fix rejects, release block, approve PR, PR merged,
-  graphify update after merge.
+description: Use when a Paperclip agent receives an approved or rejected PR review, routes requested changes or releases a review blocker, requests board approval, or confirms a PR merge and its Graphify follow-up.
 ---
 
 # Code Review Guardian
@@ -22,7 +14,7 @@ the merge owns Procedure 2.
 
 Hard rules inherited from project contributor guides — they always apply:
 
-- **Never merge a PR or mark its implementation issue `done` before its required board approval.** A separate review task can finish with a recorded verdict; that does not approve merge or deployment.
+- **Never merge a PR or mark its implementation issue `done` before its required board approval.** A standalone review task finishes after its APPROVED or CHANGES REQUESTED verdict is persisted; that does not authorize merge or deployment.
 - Express "A is blocked by B" with first-class blockers (`blockedByIssueIds`), never free-text.
 - Respect the blocked-task dedup rule: no re-checkout, no re-comment without new context.
 - **Only the dedicated Graphify agent runs graph updates.** The merge owner creates a separate task for that agent and never runs Graphify as part of the contributor or review task.
@@ -37,81 +29,56 @@ Procedure 1 below applies only to a separate review-task/blocker workflow. Confi
 
 ## Procedure 1 — Post code review (Code Reviewer/Guardian)
 
-Runs as soon as a review verdict exists while the reviewed work issue sits `blocked` behind
-the review issue.
+Use the current upstream `paperclip` skill for task writes, execution-review stages,
+trust boundaries and verified closeout. Paperclip tasks are not GitHub issues;
+use GitHub tools for the PR and Paperclip tools/API for task state.
 
-### Step 1 — Return to the blocked task
+### Step 1 — Read the assignment and review the exact head
 
-Fetch the issue you were woken on (`GET /api/issues/{issueId}`) and read `blockedBy` to locate
-the review edge. Confirm the PR URL and the verdict before changing any state.
+Read the assigned review issue, its parent and any execution-review stage. Verify
+the live PR head. Record APPROVED or CHANGES REQUESTED with that exact SHA,
+findings, validation evidence and remaining limits. Source corrections belong to
+the implementer. A changed head requires another review.
 
-### Step 2 — Comment the code-review status
+### Step 2 — Persist the verdict in the authorized review path
 
-Post **one** comment on the blocked task summarizing where the review stands:
+For an embedded review stage, submit its supported structured decision and verify
+the saved decision and participant transition. For a standalone review child,
+save the verdict on that child. Standard-trust reviewers may also report to their
+direct parent where allowed. A low-trust or review-contained reviewer must use its
+governed review path; the coordinator relays its result to the parent. A denied
+parent write does not grant cross-task authority.
 
-```markdown
-## Code review status — <VERDICT>
+For API runtimes use the run's injected `PAPERCLIP_API_URL`, `PAPERCLIP_API_KEY`
+and genuine `PAPERCLIP_RUN_ID`. Native runtimes use their supplied completion and
+review tools. Resolve the verified-write helper relative to the installed
+`paperclip` skill, not the project workspace. A local todo or final model message
+is not a Paperclip mutation.
 
-PR: <pr-url>
-Reviewed head: <full-commit-sha>
-Reviewer: Code Reviewer/Guardian
+### Step 3 — Finish the standalone review assignment
 
-Rejects (must fix):
-1. <file:line> — <what is wrong and why>
-2. ...
+For a completed standalone review, use the supported task update with
+`status: "done"` and the verdict report, then read back the child and verify Done.
+Both verdicts complete the review assignment; neither completes the implementation
+parent or grants board approval. Save reports before the final status mutation;
+additional comments on a Done task may wake it again.
 
-Non-blocking notes:
-- ...
-```
+If a write fails, report its actual error and the unpersisted action. Follow the
+current `paperclip` skill's failure path rather than claiming completion or
+repeating unsupported success summaries. Preserve unrelated dependencies,
+ownership and approval gates.
 
-For this multiline markdown, use the newline-preserving comment helper from the `paperclip`
-skill (heredoc / `scripts/paperclip-issue-update.sh` / `jq --arg`) — never hand-inline
-markdown into a one-line JSON string.
+### Step 4 — Hand the result to the implementation owner
 
-### Step 3 — Release the block
+The coordinator reads the persisted review result and continues the implementation
+through supported task/dependency controls. Changes requested return to the
+implementer. Approval at an unchanged head enables the separate board approval
+handoff. Reuse an existing matching review or approval rather than creating a
+duplicate. Finish the review child so an implementation dependency does not wait
+on its own correction. Do not change unrelated blockers or another run's checkout.
 
-Remove the review issue from the task's blockers (keep any unrelated blockers) and move the
-task out of `blocked`:
-
-```json
-PATCH /api/issues/{issueId}
-Headers: X-Paperclip-Run-Id: $PAPERCLIP_RUN_ID
-{ "blockedByIssueIds": ["…only remaining blockers…"], "status": "todo" }
-```
-
-Do not enter `in_progress` yourself — the owner enters it by checkout.
-
-### Step 4 — Ask the responsible agent to fix rejects and continue regular work
-
-Ensure `assigneeAgentId` points at the responsible agent (reassign if the review took over
-ownership), then make the hand-back explicit in the thread:
-
-> @\<responsible agent\>: please fix the listed rejects and continue with your regular work.
-
-Removing the blocker wakes them (`PAPERCLIP_WAKE_REASON=issue_blockers_resolved`); the comment
-tells them why and what to fix.
-
-### Step 5 — Ask the board to approve the PR
-
-Once the responsible agent confirms the rejects are fixed and pushed, request board approval
-of the PR:
-
-```json
-POST /api/companies/{companyId}/approvals
-{
-  "type": "request_board_approval",
-  "requestedByAgentId": "{your-agent-id}",
-  "issueIds": ["{issue-id}"],
-  "payload": {
-    "title": "Approve PR for <ISSUE-KEY>",
-    "summary": "<pr-url> — review round N passed; all rejects fixed.",
-    "recommendedAction": "Approve the PR and proceed to merge."
-  }
-}
-```
-
-Leave the issue `in_review` while waiting. After approval: merge (squash preferred), delete
-the branch, then run **Procedure 2**.
+Only an explicitly authorized merge owner acts after board approval and confirms
+the provider's merge before Procedure 2 applies.
 
 ---
 
@@ -207,5 +174,5 @@ never dump graphify updates onto a random engineering agent.
 
 All requests: `Authorization: Bearer $PAPERCLIP_API_KEY`, header
 `X-Paperclip-Run-Id: $PAPERCLIP_RUN_ID`. An issue checked out by another run is owned by
-that run — mint the token with the owning run id (see the `paperclip-issue` skill) instead of
-forcing writes.
+that run. Wait for release or use supported execution management; never mint, borrow
+or substitute another run's credentials or attribution.

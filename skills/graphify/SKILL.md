@@ -1,11 +1,6 @@
 ---
 name: graphify
-description: >
-  Queryable codebase knowledge graph for AI coding agents. Extracts AST, relationships,
-  and call graphs from source code so agents navigate by graph instead of grepping
-  blindly. Use whenever you need to understand an unfamiliar repo, trace a call flow,
-  find what connects two components, understand architecture before making changes,
-  debug a cross-module issue, or onboard to a new project.
+description: Use when exploring an unfamiliar project, mapping architecture or dependencies, tracing cross-module call or data flows, debugging across modules, or onboarding to a codebase.
 ---
 
 # Graphify

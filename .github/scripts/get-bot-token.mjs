@@ -12,12 +12,19 @@ import { createSign } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 const APP_ID = '3718661';
+
+export function reviewAppConfig(repo) {
+  return repo?.toLowerCase() === 'atarim-info/paperclip'
+    ? { appId: '5935379', botLogin: 'atarim-paperclip-review[bot]' }
+    : { appId: APP_ID, botLogin: 'commitperclip[bot]' };
+}
 const OWNER_PATTERN = /^[a-zA-Z0-9_.-]+$/;
 const REPO_PATTERN = /^[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+$/;
 
-export function generateJWT(privateKey) {
+export function generateJWT(privateKey, appId = APP_ID) {
+  if (!/^[1-9][0-9]*$/.test(appId)) throw new Error('Invalid GitHub App ID');
   const now = Math.floor(Date.now() / 1000);
-  const payload = { iat: now - 10, exp: now + 60, iss: APP_ID };
+  const payload = { iat: now - 10, exp: now + 60, iss: appId };
   const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
   const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
   const data = `${header}.${body}`;
@@ -107,8 +114,8 @@ async function main() {
     process.exit(1);
   }
 
-  const jwt = generateJWT(privateKey);
   const repo = process.env.GH_REPO ?? process.env.GITHUB_REPOSITORY;
+  const jwt = generateJWT(privateKey, reviewAppConfig(repo).appId);
   const owner = process.env.GITHUB_REPOSITORY_OWNER ?? repo?.split('/')[0];
 
   const installationId = await resolveInstallationId(ghFetch, jwt, repo, owner);
