@@ -188,5 +188,10 @@
     "dir": "ui",
     "name": "@paperclipai/ui",
     "publishFromCi": true
+  },
+  {
+    "dir": "packages/adapters/freebuff-local",
+    "name": "@paperclipai/adapter-freebuff-local",
+    "publishFromCi": false
   }
 ]

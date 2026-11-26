@@ -105,6 +105,11 @@ function findUnpublishableWorkspaceEdges(packages) {
         if (!depName.startsWith("@paperclipai/")) continue;
         if (typeof spec !== "string" || !spec.startsWith("workspace:")) continue;
         if (publishFromCiByName.get(depName) === true) continue;
+        // These are the only release paths that materialize this unpublished adapter:
+        // server bundles it, CLI esbuild inlines it, and UI publishes static assets.
+        if (depName === "@paperclipai/adapter-freebuff-local" && section === "dependencies" &&
+            ((pkg.name === "@paperclipai/server" && pkg.pkg.bundleDependencies?.includes(depName)) ||
+             pkg.name === "paperclipai" || pkg.name === "@paperclipai/ui")) continue;
 
         problems.push(
           `${pkg.name} (${pkg.dir}) is publishFromCi:true but declares a "${section}" workspace dependency on ${depName}, ` +
