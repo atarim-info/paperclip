@@ -90,6 +90,12 @@ const RESOLVED_DEP_SECTIONS = ["dependencies", "optionalDependencies", "peerDepe
 // publish, so the rewritten spec points at a version that will never exist on npm and
 // the package becomes uninstallable. Detect those edges so the release fails fast
 // instead of shipping a broken canary (e.g. server -> skills-catalog from #8327).
+export function isPrivateFreebuffMaterialized(pkg, depName, section) {
+  return depName === "@paperclipai/adapter-freebuff-local" && section === "dependencies" &&
+    ((pkg.name === "@paperclipai/server" && pkg.bundleDependencies?.includes(depName)) ||
+     pkg.name === "paperclipai" || pkg.name === "@paperclipai/ui");
+}
+
 function findUnpublishableWorkspaceEdges(packages) {
   const publishFromCiByName = new Map(packages.map((pkg) => [pkg.name, pkg.publishFromCi]));
   const problems = [];
@@ -105,6 +111,9 @@ function findUnpublishableWorkspaceEdges(packages) {
         if (!depName.startsWith("@paperclipai/")) continue;
         if (typeof spec !== "string" || !spec.startsWith("workspace:")) continue;
         if (publishFromCiByName.get(depName) === true) continue;
+        // These are the only release paths that materialize this unpublished adapter:
+        // server bundles it, CLI esbuild inlines it, and UI publishes static assets.
+        if (isPrivateFreebuffMaterialized(pkg.pkg, depName, section)) continue;
 
         problems.push(
           `${pkg.name} (${pkg.dir}) is publishFromCi:true but declares a "${section}" workspace dependency on ${depName}, ` +

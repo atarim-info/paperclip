@@ -22,9 +22,12 @@ const EXPECTED_OPTIONAL_KEYS = [
   "paperclipai/optional/content/release-announcement",
   "paperclipai/optional/content/simplified-english",
   "paperclipai/optional/finance/ramp",
+  "paperclipai/optional/legal/contract-review",
   "paperclipai/optional/product/design-critique",
   "paperclipai/optional/research/last30days",
+  "paperclipai/optional/sales/lead-qualification",
   "paperclipai/optional/software-development/prepare-mcp-integration",
+  "paperclipai/optional/support/ticket-triage",
 ];
 
 const MAX_FRONTMATTER_DESCRIPTION_LENGTH = 300;

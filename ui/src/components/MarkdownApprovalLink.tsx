@@ -24,7 +24,6 @@ export function MarkdownApprovalLink({
     queryFn: () => approvalsApi.list(selectedId!),
     enabled: Boolean(short && selectedId && belongsToActiveRoute),
     staleTime: 60_000,
-    retry: false,
   });
   const matches = short ? candidates?.filter((approval) =>
     approval.companyId === selectedId && approval.id.toLowerCase().startsWith(id.toLowerCase())) : undefined;
@@ -36,7 +35,6 @@ export function MarkdownApprovalLink({
     // lookup. Only the returned company ID can justify correcting a full UUID.
     enabled: Boolean(!short && selectedId),
     staleTime: 60_000,
-    retry: false,
   });
   const data = short ? resolved : detail;
   // A cached approval from another company must never supply this label.

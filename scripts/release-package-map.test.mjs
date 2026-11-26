@@ -140,3 +140,16 @@ test("guard ignores non-workspace specs, non-internal deps, and edges from off-t
 test("the live release manifest has no unpublishable workspace edges", () => {
   assert.deepEqual(findUnpublishableWorkspaceEdges(buildReleasePackagePlan()), []);
 });
+
+
+test("Freebuff remains unpublished and only verified server and CLI paths may consume it", () => {
+  const name = "@paperclipai/adapter-freebuff-local";
+  const privateAdapter = pkg(name, { publishFromCi: false });
+  const server = pkg("@paperclipai/server", { publishFromCi: true, dependencies: { [name]: "workspace:*" }, bundleDependencies: [name] });
+  const cli = pkg("paperclipai", { publishFromCi: true, dependencies: { [name]: "workspace:*" } });
+  const ui = pkg("@paperclipai/ui", { publishFromCi: true, dependencies: { [name]: "workspace:*" } });
+  assert.deepEqual(findUnpublishableWorkspaceEdges([server, cli, ui, privateAdapter]), []);
+  assert.equal(findUnpublishableWorkspaceEdges([pkg("@paperclipai/server", { publishFromCi: true, dependencies: { [name]: "workspace:*" } }), privateAdapter]).length, 1);
+  assert.equal(findUnpublishableWorkspaceEdges([pkg("other-consumer", { publishFromCi: true, dependencies: { [name]: "workspace:*" }, bundleDependencies: [name] }), privateAdapter]).length, 1);
+  assert.equal(findUnpublishableWorkspaceEdges([pkg("@paperclipai/server", { publishFromCi: true, optionalDependencies: { [name]: "workspace:*" }, bundleDependencies: [name] }), privateAdapter]).length, 1);
+});

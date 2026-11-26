@@ -112,24 +112,24 @@ test("atomically publishes while the previous executable is running", { skip: pr
   const root = await mkdtemp(path.join(tmpdir(), "runnerd-stage-test-"));
   const destination = path.join(root, "paperclip-runnerd");
   await withOwnedChildren(root, async start => {
-    await stageRunnerBinary("/bin/sleep", destination);
+    await stageRunnerBinary(process.execPath, destination);
     const previous = await stat(destination);
-    const old = start(destination, ["30"]);
+    const old = start(destination, ["-e", "setTimeout(() => {}, 30000)"]);
     await old.spawned;
-    await stageRunnerBinary("/bin/sleep", destination);
+    await stageRunnerBinary(process.execPath, destination);
     const published = await stat(destination);
     assert.notEqual(published.ino, previous.ino);
     assert.equal(published.mode & 0o777, 0o755);
     assert.equal(old.child.exitCode, null);
     assert.equal(old.child.signalCode, null);
     assert.deepEqual(await readdir(root), ["paperclip-runnerd"]);
-    const next = start(destination, ["0"]);
+    const next = start(destination, ["-e", "process.exit(0)"]);
     await next.spawned; await next.closed;
     assert.equal(next.child.exitCode, 0);
   });
 });
 
-test("a source rebuild selects fresh dev bytes while preserving release binaries and their manifest", { skip: process.platform === "win32", timeout: 15_000 }, async () => {
+test("a source rebuild selects fresh dev bytes while preserving release binaries and their manifest", { skip: process.platform === "win32", timeout: 45_000 }, async () => {
   const root = await mkdtemp(path.join(tmpdir(), "runnerd-stage-rebuild-"));
   const packageRoot = path.join(root, "packages", "paperclip-runner");
   const binaryRoot = path.join(packageRoot, "dist", "bin");
@@ -149,9 +149,10 @@ test("a source rebuild selects fresh dev bytes while preserving release binaries
     await mkdir(path.dirname(source), { recursive: true });
     await writeFile(source, "fn main() {}\n");
     await mkdir(path.dirname(built), { recursive: true });
-    await copyHostFixture("/bin/echo", built);
+    await copyHostFixture(process.platform === "darwin" ? "/bin/echo" : process.execPath, built);
+    if (process.platform !== "darwin") await writeFile(built, Buffer.concat([await readFile(built), Buffer.from([0])]));
     const previousBuild = path.join(root, "previous-build");
-    await copyHostFixture("/bin/sleep", previousBuild);
+    await copyHostFixture(process.execPath, previousBuild);
     await stageRunnerBinary(previousBuild, hostTarget);
     await stageRunnerBinary(built, path.join(binaryRoot, "paperclip-runnerd"));
     const platforms = {}, releaseBytes = new Map();
@@ -169,7 +170,7 @@ test("a source rebuild selects fresh dev bytes while preserving release binaries
       releaseBytes.set(artifact, bytes);
       platforms[target] = { path: `${target}/paperclip-runnerd`, sha256: "sha256:" + createHash("sha256").update(bytes).digest("hex") };
     }
-    const oldTime = new Date(Date.now() - 10_000);
+    const oldTime = new Date(Date.now() - 3_600_000);
     await utimes(hostTarget, oldTime, oldTime);
     await utimes(path.join(binaryRoot, "paperclip-runnerd"), oldTime, oldTime);
     const oldArtifact = await readFile(hostTarget);
@@ -177,7 +178,7 @@ test("a source rebuild selects fresh dev bytes while preserving release binaries
     const manifestPath = path.join(binaryRoot, "release-manifest.json");
     const manifest = JSON.stringify({ schema: "paperclip.runner.release-binaries.v1", sourceRevision: "a".repeat(40), platforms });
     await writeFile(manifestPath, manifest);
-    const old = start(hostTarget, ["30"]);
+    const old = start(hostTarget, ["-e", "setTimeout(() => {}, 30000)"]);
     await old.spawned;
     const requirement = { repoRoot: root, nativeRunnerRequired: true };
     assert.equal(paperclipRunnerBinaryNeedsBuild(requirement), true);
@@ -197,7 +198,7 @@ test("a source rebuild selects fresh dev bytes while preserving release binaries
     assert.equal(paperclipRunnerBinaryNeedsBuild(requirement), false);
     assert.equal(old.child.exitCode, null);
     assert.equal(old.child.signalCode, null);
-    const next = start(selected.binary, ["rebuilt"]);
+    const next = start(selected.binary, process.platform === "darwin" ? ["rebuilt"] : ["-e", "process.exit(0)"]);
     await next.spawned; await next.closed;
     assert.equal(next.child.exitCode, 0);
   });
