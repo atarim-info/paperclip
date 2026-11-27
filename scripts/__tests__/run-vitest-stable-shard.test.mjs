@@ -97,6 +97,14 @@ for (const group of ["general-workspaces-b", "general-workspaces-c"]) {
   });
 }
 
+test("unsharded workspace lanes accept the hosted workflow's 0/1 selection", () => {
+  for (const group of ["general-workspaces-b", "general-workspaces-c"]) {
+    const plan = dryRunJson(["--mode", "general", "--group", group, "--shard-index", "0", "--shard-count", "1"]);
+    assert.ok(plan.workspaceProjects.length > 0);
+    assert.equal(plan.workspacesVitestShard, null);
+  }
+});
+
 test("workspace lanes cover every non-server project in the root Vitest configuration", () => {
   const config = readFileSync(path.join(repoRoot, "vitest.config.ts"), "utf8");
   const roots = [...config.matchAll(/^\s+"([^"]+)",?\s*$/gm)].map(match => match[1]);
