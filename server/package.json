@@ -135,7 +135,10 @@
     "@chat-adapter/telegram",
     "@discordjs/ws",
     "acpx",
-    "@paperclipai/adapter-freebuff-local"
+    "@paperclipai/adapter-crush-local",
+    "@paperclipai/adapter-freebuff-local",
+    "@paperclipai/adapter-kilocode-local",
+    "@paperclipai/adapter-mimo-local"
   ],
   "devDependencies": {
     "@opentelemetry/context-async-hooks": "2.10.0",

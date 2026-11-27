@@ -8,7 +8,7 @@ import { execFileSync } from 'node:child_process';
 import { cpSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { isPrivateFreebuffMaterialized } from './release-package-map.mjs';
+import { isUnpublishedAdapterMaterialized } from './release-package-map.mjs';
 import { materializePublishManifest } from './prepare-bundled-package.mjs';
 
 export const PUBLIC_INSTALL_ROOTS = ['@paperclipai/server', 'paperclipai'];
@@ -26,7 +26,7 @@ export function publicInstallClosure(repo, roots = PUBLIC_INSTALL_ROOTS) {
     const entry = packages.get(name); assert.ok(entry, `Missing public workspace dependency ${name}`); needed.add(name);
     for (const section of ['dependencies', 'optionalDependencies']) {
       for (const [dep, spec] of Object.entries(entry.manifest[section] ?? {})) {
-        if (spec.startsWith('workspace:') && !isPrivateFreebuffMaterialized(entry.manifest, dep, section)) visit(dep);
+        if (spec.startsWith('workspace:') && !isUnpublishedAdapterMaterialized(entry.manifest, dep, section)) visit(dep);
       }
     }
   }

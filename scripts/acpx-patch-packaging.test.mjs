@@ -19,6 +19,7 @@ import test from "node:test";
 import { createRequire } from "node:module";
 import { runInNewContext } from "node:vm";
 
+import { unpublishedAdapterDirs } from "./release-package-map.mjs";
 import cliEsbuildConfig from "../cli/esbuild.config.mjs";
 import { bundledCliNpmDependencies } from "./cli-bundled-npm-dependencies.mjs";
 import {
@@ -597,11 +598,13 @@ test("server package staging applies every bundled runtime patch and preserves t
   writeFileSync(join(nativePackage, "vendor/codex"), "producer host fixture; never executed");
   mkdirSync(join(fixtureSourceRoot, "packages/paperclip-runner/src/drivers/acpx"), { recursive: true });
   writeFileSync(join(fixtureSourceRoot, "package.json"), JSON.stringify(rootPackage));
-  const privateAdapter = join(fixtureSourceRoot, "packages/adapters/freebuff-local");
-  mkdirSync(join(privateAdapter, "dist"), { recursive: true });
-  writeFileSync(join(privateAdapter, "package.json"), JSON.stringify({ name: "@paperclipai/adapter-freebuff-local", version: "0.1.0", files: ["dist"] }));
-  writeFileSync(join(privateAdapter, "dist/index.js"), "export {};\n");
-  mkdirSync(join(privateAdapter, "dist/server")); writeFileSync(join(privateAdapter, "dist/server/index.js"), "export {};\n");
+  for (const [name, dir] of Object.entries(unpublishedAdapterDirs)) {
+    const adapter = join(fixtureSourceRoot, dir);
+    mkdirSync(join(adapter, "dist/server"), { recursive: true });
+    writeFileSync(join(adapter, "package.json"), JSON.stringify({ name, version: "0.1.0", files: ["dist"] }));
+    writeFileSync(join(adapter, "dist/index.js"), "export {};\n");
+    writeFileSync(join(adapter, "dist/server/index.js"), "export {};\n");
+  }
   writeFileSync(join(fixtureSourceRoot, "packages/paperclip-runner/acpx-profiles.json"), JSON.stringify(profileData));
   mkdirSync(join(fixtureSourceRoot, "patches"));
   for (const patchPath of Object.values(rootPackage.pnpm.patchedDependencies)) {
@@ -683,7 +686,9 @@ printf 'patched spawnEnvironment runtime\\n' > "$target/dist/runtime.js"
     },
   );
 
-  assert.equal(existsSync(join(destinationDir, "node_modules/@paperclipai/adapter-freebuff-local/dist/index.js")), true);
+  for (const name of Object.keys(unpublishedAdapterDirs)) {
+    assert.equal(existsSync(join(destinationDir, "node_modules", name, "dist/index.js")), true);
+  }
   const stagedAcpxDir = join(destinationDir, "node_modules/acpx");
   assert.equal(lstatSync(stagedAcpxDir).isDirectory(), true);
   assert.equal(lstatSync(stagedAcpxDir).isSymbolicLink(), false);

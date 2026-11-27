@@ -2,9 +2,9 @@
 
 > **For agentic workers:** Use superpowers:executing-plans. Verify every release artifact before any publication.
 
-**Goal:** Ship the fork's Freebuff adapter inside the server, CLI, and UI artifacts without publishing the adapter separately.
+**Goal:** Ship the fork's Crush, Freebuff, Kilocode, and Mimo adapters inside the server, CLI, and UI artifacts without publishing the adapter separately.
 
-**Architecture:** Build Freebuff in the workspace. Stage its built package as a bundled server dependency and retain CLI's existing esbuild bundling. Keep the release graph guard for all other unpublished dependencies and permit Freebuff only where the artifact generation demonstrably includes it.
+**Architecture:** Build the four adapters in the workspace. Stage their built packages as a bundled server dependency and retain CLI's existing esbuild bundling. Keep the release graph guard for all other unpublished dependencies and permit these adapters only where the artifact generation demonstrably includes it.
 
 **Tech Stack:** Node.js, pnpm, npm pack, TypeScript, Node test runner.
 
@@ -18,8 +18,8 @@
 
 ## Review Focus
 
-- Package install must succeed with Freebuff unavailable on npm and import the server adapter.
-- CLI build must contain its adapter formatter and declare no unavailable Freebuff dependency.
+- Package install must succeed with all four adapters unavailable on npm and import their server entry points.
+- CLI build must contain their adapter formatters and declare no unavailable adapter dependency.
 - Missing adapter build or dependencies must cause packaging to fail, not silently produce a broken artifact.
 - Guard must continue rejecting all other unpublished workspace dependencies and reject unsupported consumers.
 - Bundled files and manifest must match the candidate version and never contain workspace symlinks.

@@ -90,8 +90,15 @@ const RESOLVED_DEP_SECTIONS = ["dependencies", "optionalDependencies", "peerDepe
 // publish, so the rewritten spec points at a version that will never exist on npm and
 // the package becomes uninstallable. Detect those edges so the release fails fast
 // instead of shipping a broken canary (e.g. server -> skills-catalog from #8327).
-export function isPrivateFreebuffMaterialized(pkg, depName, section) {
-  return depName === "@paperclipai/adapter-freebuff-local" && section === "dependencies" &&
+export const unpublishedAdapterDirs = Object.freeze({
+  "@paperclipai/adapter-crush-local": "packages/adapters/crush-local",
+  "@paperclipai/adapter-freebuff-local": "packages/adapters/freebuff-local",
+  "@paperclipai/adapter-kilocode-local": "packages/adapters/kilocode-local",
+  "@paperclipai/adapter-mimo-local": "packages/adapters/mimo-local",
+});
+
+export function isUnpublishedAdapterMaterialized(pkg, depName, section) {
+  return Object.hasOwn(unpublishedAdapterDirs, depName) && section === "dependencies" &&
     ((pkg.name === "@paperclipai/server" && pkg.bundleDependencies?.includes(depName)) ||
      pkg.name === "paperclipai" || pkg.name === "@paperclipai/ui");
 }
@@ -111,9 +118,9 @@ function findUnpublishableWorkspaceEdges(packages) {
         if (!depName.startsWith("@paperclipai/")) continue;
         if (typeof spec !== "string" || !spec.startsWith("workspace:")) continue;
         if (publishFromCiByName.get(depName) === true) continue;
-        // These are the only release paths that materialize this unpublished adapter:
+        // These are the only release paths that materialize the unpublished adapters:
         // server bundles it, CLI esbuild inlines it, and UI publishes static assets.
-        if (isPrivateFreebuffMaterialized(pkg.pkg, depName, section)) continue;
+        if (isUnpublishedAdapterMaterialized(pkg.pkg, depName, section)) continue;
 
         problems.push(
           `${pkg.name} (${pkg.dir}) is publishFromCi:true but declares a "${section}" workspace dependency on ${depName}, ` +
