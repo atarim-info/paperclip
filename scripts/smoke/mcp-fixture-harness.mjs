@@ -374,6 +374,14 @@ async function main() {
       assert(quarantined.includes("kv.set"), "kv.set should be quarantined after schema change");
       const blocked = await harness.call("approval-gated-writes", "kv.set", { key: "a", value: "b" });
       assert(blocked.outcome === "quarantined", "quarantined tool should not execute");
+
+      const secondFlip = await harness.call("runtime-lifecycle", "fixture.schemaFlip", { toolName: "kv.set" });
+      assert(secondFlip.ok, "fixture.schemaFlip should execute again");
+      const nextTools = await httpClient.listTools();
+      assert(
+        !nextTools.find((tool) => tool.name === "kv.set")?.inputSchema.required.includes("expiresAt"),
+        "second fixture.schemaFlip should restore the baseline kv.set schema",
+      );
     });
 
     await runCase(results, "malicious result is redacted and quarantined", async () => {
