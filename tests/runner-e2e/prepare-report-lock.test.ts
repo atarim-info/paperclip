@@ -22,6 +22,15 @@ it('admits the committed reporting lock and preserves the UI dependency closure'
     expect(await prepareReportLock(root)).toBe(committedHash === policy.outputSha256 ? 'already-reviewed' : 'reviewed-correction');
     expect(createHash('sha256').update(await readFile(lock)).digest('hex')).toBe(policy.outputSha256);
     expect(await prepareReportLock(root)).toBe('already-reviewed');
+    const patch = await readFile(path.join(relative, 'report-lock.patch'));
+    expect(createHash('sha256').update(patch).digest('hex')).toBe(policy.patchSha256);
+    // A nonempty proof must still round-trip to its reviewed input. An empty
+    // correction is valid when input and output already match.
+    if (policy.inputSha256 !== policy.outputSha256) {
+      execFileSync('git', ['apply', '--reverse', path.join(relative, 'report-lock.patch')], { cwd: root });
+      expect(createHash('sha256').update(await readFile(lock)).digest('hex')).toBe(policy.inputSha256);
+      expect(await prepareReportLock(root)).toBe('reviewed-correction');
+    }
     const reviewed = parse(await readFile(lock, 'utf8'));
     const ui = JSON.parse(await readFile(path.resolve(here, '../../ui/package.json'), 'utf8'));
     for (const [name, specifier] of Object.entries(ui.dependencies)) {
