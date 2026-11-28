@@ -5,7 +5,8 @@ import { isNode24ImageTag } from "./node-image-policy.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const expectedEngine = ">=24.11.0";
-const expectedTypes = "^24.0.0";
+const expectedTypes = "^24.x.y";
+const isExpectedTypes = (specifier) => /^\^24\.\d+\.\d+$/.test(specifier);
 const failures = [];
 const skippedDirectories = new Set([".git", ".paperclip", "coverage", "data", "dist", "node_modules"]);
 
@@ -27,7 +28,7 @@ walk(repoRoot, (filePath) => {
   const manifest = JSON.parse(fs.readFileSync(filePath, "utf8"));
   for (const section of ["dependencies", "devDependencies", "optionalDependencies", "peerDependencies"]) {
     const specifier = manifest[section]?.["@types/node"];
-    if (specifier && specifier !== expectedTypes) {
+    if (specifier && !isExpectedTypes(specifier)) {
       failures.push(`${relative(filePath)}: ${section}.@types/node must be ${expectedTypes}, found ${specifier}`);
     }
   }
