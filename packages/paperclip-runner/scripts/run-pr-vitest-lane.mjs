@@ -94,6 +94,11 @@ const plannedCommands = [
   ...(runPackageTests
     ? [{ command: "pnpm", args: ["exec", "vitest", "run", ...packageArgs], cwd: packageRoot }]
     : []),
+  // Native server suites each invoke Cargo. Prepare the release daemon once
+  // before starting parallel suites so they do not time out on Cargo's lock.
+  ...(runNativeRunnerGroup
+    ? [{ command: "cargo", args: ["build", "--release", "--locked", "--manifest-path", "runner/Cargo.toml", "-p", "paperclip-runner-core", "--bin", "paperclip-runnerd"], cwd: packageRoot }]
+    : []),
   ...(runNativeRunnerGroup
     ? [{
         command: "pnpm",
