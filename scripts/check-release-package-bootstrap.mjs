@@ -4,6 +4,20 @@ import { spawnSync } from "node:child_process";
 
 import { buildReleasePackagePlan } from "./release-package-map.mjs";
 
+// Fork-only adapters that server, cli and ui import at runtime. They are
+// release-enrolled so the manifest dependency check passes, but this fork
+// never publishes them to npm, so the "must exist on npm" rule does not apply.
+const NPM_BOOTSTRAP_EXEMPT = new Set([
+  "@paperclipai/adapter-crush-local",
+  "@paperclipai/adapter-freebuff-local",
+  "@paperclipai/adapter-kilocode-local",
+  "@paperclipai/adapter-mimo-local",
+]);
+
+function isExemptFromNpmBootstrap(packageName) {
+  return NPM_BOOTSTRAP_EXEMPT.has(packageName);
+}
+
 function normalizePath(filePath) {
   return filePath.replace(/\\/g, "/");
 }
@@ -156,6 +170,7 @@ function main(changedPaths) {
   const registryFailures = [];
 
   for (const pkg of changedReleasePackages) {
+    if (isExemptFromNpmBootstrap(pkg.name)) continue;
     const npmStatus = inspectNpmPackage(pkg.name);
 
     if (npmStatus.status === "missing") {
@@ -203,4 +218,5 @@ export {
   classifyNpmViewFailure,
   collectReleasePackagesForChangedPaths,
   getBaseReleaseState,
+  isExemptFromNpmBootstrap,
 };
