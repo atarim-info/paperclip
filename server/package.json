@@ -122,7 +122,8 @@
     "tar-stream": "3.2.0",
     "ws": "^8.22.0",
     "zod": "^4.6.6",
-    "@opentelemetry/resources": "2.10.0"
+    "@opentelemetry/resources": "2.10.0",
+    "picocolors": "^1.1.1"
   },
   "bundleDependencies": [
     "@agentclientprotocol/claude-agent-acp",
@@ -133,7 +134,11 @@
     "@chat-adapter/teams",
     "@chat-adapter/telegram",
     "@discordjs/ws",
-    "acpx"
+    "acpx",
+    "@paperclipai/adapter-crush-local",
+    "@paperclipai/adapter-freebuff-local",
+    "@paperclipai/adapter-kilocode-local",
+    "@paperclipai/adapter-mimo-local"
   ],
   "devDependencies": {
     "@opentelemetry/context-async-hooks": "2.10.0",

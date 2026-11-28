@@ -3,7 +3,8 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { PUBLIC_INSTALL_ROOTS, publicInstallClosure, publicRegistryDependencies } from '../public-install-closure.mjs';
+import { PUBLIC_INSTALL_ROOTS, publicInstallClosure, publicRegistryDependencies, publicInstallManifest } from '../public-install-closure.mjs';
+import { isUnpublishedAdapterMaterialized, unpublishedAdapterDirs } from '../release-package-map.mjs';
 
 const repo = fileURLToPath(new URL('../../', import.meta.url));
 
@@ -15,8 +16,10 @@ test('the closure starts at the server and the CLI and follows only workspace sp
   assert.ok(needed.has('paperclipai'));
   for (const name of needed) {
     const { manifest } = packages.get(name);
-    for (const [dep, spec] of Object.entries({ ...manifest.dependencies, ...manifest.optionalDependencies })) {
-      assert.equal(needed.has(dep), spec.startsWith('workspace:'), `${name} -> ${dep}@${spec}`);
+    for (const section of ['dependencies', 'optionalDependencies']) {
+      for (const [dep, spec] of Object.entries(manifest[section] ?? {})) {
+        assert.equal(needed.has(dep), spec.startsWith('workspace:') && !isUnpublishedAdapterMaterialized(manifest, dep, section), `${name} -> ${dep}@${spec}`);
+      }
     }
   }
 });
@@ -59,4 +62,18 @@ test('the Build lane warms the cache before pnpm build and hands the same direct
   assert.ok(verify < position('node scripts/verify-grok-npm-install.mjs'));
   const verifier = readFileSync(new URL('../verify-grok-npm-install.mjs', import.meta.url), 'utf8');
   assert.ok(verifier.includes("const cache = process.env.PAPERCLIP_PUBLIC_INSTALL_NPM_CACHE ? resolve(process.env.PAPERCLIP_PUBLIC_INSTALL_NPM_CACHE) : join(root, 'cache');"));
+});
+
+
+test('verifier uses the actual CLI and UI release manifests for private adapters', () => {
+  const { packages } = publicInstallClosure(repo);
+  const version = '0.0.0-test';
+  for (const name of ['paperclipai', '@paperclipai/ui']) {
+    const result = publicInstallManifest(repo, name, packages.get(name).manifest, version);
+    assert.equal(result.version, version);
+    for (const adapter of Object.keys(unpublishedAdapterDirs)) {
+      assert.equal(result.dependencies?.[adapter], undefined);
+    }
+    if (name === 'paperclipai') assert.equal(result.dependencies['@paperclipai/server'], version);
+  }
 });

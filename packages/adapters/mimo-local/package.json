@@ -12,6 +12,7 @@
     "directory": "packages/adapters/mimo-local"
   },
   "type": "module",
+  "engines": { "node": ">=24.11.0" },
   "exports": {
     ".": "./src/index.ts",
     "./server": "./src/server/index.ts",
@@ -40,7 +41,7 @@
     "picocolors": "^1.1.1"
   },
   "devDependencies": {
-    "@types/node": "^24.6.0",
+    "@types/node": "^24.0.0",
     "typescript": "^5.7.3"
   }
 }

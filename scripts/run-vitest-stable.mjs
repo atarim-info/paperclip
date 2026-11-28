@@ -32,9 +32,13 @@ const nonServerProjects = [
   "@paperclipai/adapter-codex-local",
   "@paperclipai/adapter-cursor-cloud",
   "@paperclipai/adapter-cursor-local",
+  "@paperclipai/adapter-crush-local",
+  "@paperclipai/adapter-freebuff-local",
   "@paperclipai/adapter-gemini-local",
   "@paperclipai/adapter-grok-local",
   "@paperclipai/hermes-paperclip-adapter",
+  "@paperclipai/adapter-kilocode-local",
+  "@paperclipai/adapter-mimo-local",
   "@paperclipai/adapter-kimi-local",
   "@paperclipai/adapter-openclaw-gateway",
   "@paperclipai/adapter-opencode-local",
@@ -349,6 +353,15 @@ function parseCliOptions(argv) {
       ([...generalServerGroups, generalChatGroupName, generalWorkspacesAGroupName].includes(group)
         || Boolean(process.env.PAPERCLIP_CI_TEST_SELECTION)
           && [generalWorkspacesBGroupName, generalWorkspacesCGroupName].includes(group)));
+  // Hosted matrix entries may carry a default 0/1 shard even for lanes
+  // that run unsharded. Accept only this equivalent no-op; real shards
+  // remain rejected so the lane cannot accidentally omit tests.
+  if (!shardAllowed && mode === generalModeName &&
+      [generalWorkspacesBGroupName, generalWorkspacesCGroupName].includes(group) &&
+      shardIndex === 0 && shardCount === 1) {
+    shardIndex = null;
+    shardCount = null;
+  }
   if (!shardAllowed && shardIndex !== null) {
     fail(
       "--shard-index/--shard-count require serialized mode, a shardable general server/chat/workspaces-a group, or a selected workspace group.",

@@ -1311,9 +1311,9 @@ describeEmbeddedPostgres("companySkillService.list", () => {
       {
         companyId,
         folderId: operations.id,
-        key: `company/${companyId}/deploy`,
-        slug: "deploy",
-        name: "Deploy",
+        key: `company/${companyId}/fixture-deploy-7f3c`,
+        slug: "fixture-deploy-7f3c",
+        name: "Fixture Deploy 7f3c",
         markdown: "# Deploy",
         sourceType: "local_path",
         sourceLocator: deployDir,
@@ -1329,8 +1329,8 @@ describeEmbeddedPostgres("companySkillService.list", () => {
       expect.objectContaining({ name: "Review", folderPath: "engineering/reviews" }),
     ]);
     await expect(svc.list(companyId, { folderId: engineering.id })).resolves.toEqual([]);
-    await expect(svc.list(companyId, { folderId: engineering.id, q: "deploy" })).resolves.toEqual([
-      expect.objectContaining({ name: "Deploy", folderPath: "operations" }),
+    await expect(svc.list(companyId, { folderId: engineering.id, q: "fixture-deploy-7f3c" })).resolves.toEqual([
+      expect.objectContaining({ name: "Fixture Deploy 7f3c", folderPath: "operations" }),
     ]);
     const review = (await svc.list(companyId)).find((skill) => skill.name === "Review");
     await expect(svc.getById(companyId, review!.id)).resolves.toMatchObject({

@@ -72,3 +72,11 @@ test("package lanes form a complete, non-overlapping, balanced cover of the Vite
   const heaviest = Math.max(...inventory.map(weight));
   for (const lane of lanes) assert.ok(lane.estimatedMs <= total / laneCount + heaviest, `lane ${lane.index} is unbalanced`);
 });
+
+
+test("native server lane builds its release daemon before parallel integration tests", () => {
+  const plan = wrapperPlan(["--native-server"], { GITHUB_WORKFLOW: "PR" });
+  const release = plan.plannedCommands.findIndex(item => item.command === "cargo" && item.args.includes("--release") && item.args.includes("paperclip-runnerd"));
+  const native = plan.plannedCommands.findIndex(item => item.args.includes("general-server-native-runner"));
+  assert.ok(release >= 0 && native > release, "the release daemon must be ready before native suites start");
+});

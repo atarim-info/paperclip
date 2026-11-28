@@ -692,7 +692,7 @@ const paperclipRunnerAdapter: ServerAdapterModule = {
         )
       : buildNpmRuntimeCommandSpec(config, "codex", "@openai/codex@0.160.0"),
   agentConfigurationDoc:
-    "# Paperclip Runner\n\nAdapter: paperclip_runner\n\nRuns Codex, OpenCode, Claude Managed, AWS AgentCore, or ACPX Claude/Grok Build/Cursor/Pi through the Rust Paperclip runner and authenticated PRP transport. Pi accepts an explicit provider/model ID and uses the company credentials bound to the agent environment. GitHub Copilot requires a saved GitHub token and an explicitly selected available model. Managed providers use company-scoped qualified profiles, explicit retention acknowledgement, and spend limits.\n",
+    "# Paperclip Runner\n\nAdapter: paperclip_runner\n\nRuns Codex, OpenCode, Claude Managed, AWS AgentCore, or ACPX Claude/Grok Build/Cursor/Pi through the Rust Paperclip runner and authenticated PRP transport. Pi accepts an explicit provider/model ID and uses the company credentials bound to the agent environment. GitHub Copilot requires a saved GitHub token and an explicitly selected available model. Managed providers use company-scoped qualified profiles, explicit retention acknowledgement, and spend limits. A board operator creates each Claude Managed (Anthropic managed agent) profile through POST /api/companies/{companyId}/managed-agent-profiles; agent credentials cannot create, qualify or list one.\n",
   getConfigSchema: () => ({
     fields: [
       {
@@ -1038,6 +1038,7 @@ const openCodeLocalAdapter: ServerAdapterModule = {
 
 const freebuffLocalAdapter: ServerAdapterModule = {
   type: "freebuff_local",
+  runtimeToolDelivery: "environment",
   execute: freebuffExecute,
   testEnvironment: freebuffTestEnvironment,
   sessionCodec: freebuffSessionCodec,
@@ -1050,6 +1051,7 @@ const freebuffLocalAdapter: ServerAdapterModule = {
 
 const crushLocalAdapter: ServerAdapterModule = {
   type: "crush_local",
+  runtimeToolDelivery: "environment",
   execute: crushExecute,
   testEnvironment: crushTestEnvironment,
   listSkills: listCrushSkills,
@@ -1069,6 +1071,7 @@ const crushLocalAdapter: ServerAdapterModule = {
 
 const kilocodeLocalAdapter: ServerAdapterModule = {
   type: "kilocode_local",
+  runtimeToolDelivery: "environment",
   execute: kiloExecute,
   testEnvironment: kiloTestEnvironment,
   listSkills: listKiloSkills,
@@ -1088,6 +1091,7 @@ const kilocodeLocalAdapter: ServerAdapterModule = {
 
 const mimoLocalAdapter: ServerAdapterModule = {
   type: "mimo_local",
+  runtimeToolDelivery: "environment",
   execute: mimoExecute,
   testEnvironment: mimoTestEnvironment,
   listSkills: listMimoSkills,

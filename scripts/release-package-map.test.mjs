@@ -6,6 +6,7 @@ import {
   checkConfiguration,
   findUnpublishableWorkspaceEdges,
   getReleasePackages,
+  unpublishedAdapterDirs,
 } from "./release-package-map.mjs";
 
 function pkg(name, { publishFromCi, ...deps } = {}) {
@@ -140,3 +141,20 @@ test("guard ignores non-workspace specs, non-internal deps, and edges from off-t
 test("the live release manifest has no unpublishable workspace edges", () => {
   assert.deepEqual(findUnpublishableWorkspaceEdges(buildReleasePackagePlan()), []);
 });
+
+
+for (const [name, dir] of Object.entries(unpublishedAdapterDirs)) {
+  test(`${name} stays unpublished and only supported release paths may consume it`, () => {
+    const livePackage = buildReleasePackagePlan().find(entry => entry.name === name);
+    assert.equal(livePackage?.dir.replaceAll("\\", "/"), dir);
+    assert.equal(livePackage?.publishFromCi, false);
+    const privateAdapter = pkg(name, { publishFromCi: false });
+    const server = pkg("@paperclipai/server", { publishFromCi: true, dependencies: { [name]: "workspace:*" }, bundleDependencies: [name] });
+    const cli = pkg("paperclipai", { publishFromCi: true, dependencies: { [name]: "workspace:*" } });
+    const ui = pkg("@paperclipai/ui", { publishFromCi: true, dependencies: { [name]: "workspace:*" } });
+    assert.deepEqual(findUnpublishableWorkspaceEdges([server, cli, ui, privateAdapter]), []);
+    assert.equal(findUnpublishableWorkspaceEdges([pkg("@paperclipai/server", { publishFromCi: true, dependencies: { [name]: "workspace:*" } }), privateAdapter]).length, 1);
+    assert.equal(findUnpublishableWorkspaceEdges([pkg("other-consumer", { publishFromCi: true, dependencies: { [name]: "workspace:*" }, bundleDependencies: [name] }), privateAdapter]).length, 1);
+    assert.equal(findUnpublishableWorkspaceEdges([pkg("@paperclipai/server", { publishFromCi: true, optionalDependencies: { [name]: "workspace:*" }, bundleDependencies: [name] }), privateAdapter]).length, 1);
+  });
+}

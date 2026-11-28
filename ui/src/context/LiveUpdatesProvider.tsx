@@ -1275,7 +1275,6 @@ async function hydrateIssueActivityToast(
       },
       // A fresh partial cache entry can still be missing the identity we need.
       staleTime: 0,
-      retry: false,
     });
   } catch {
     // Do not expose inaccessible titles or fall back to an opaque UUID toast.

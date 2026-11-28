@@ -43,6 +43,7 @@ export const SANDBOX_PROVIDERS = [
 export const LOCKED_PROVIDERS = ["packages/plugins/sandbox-providers/daytona"];
 
 export const PROGRAMS = [
+  "packages/adapters/freebuff-local/tsconfig.test.json",
   "packages/db/tsconfig.test.json",
   "packages/kv-demo-mcp-server/tsconfig.test.json",
   "packages/paperclip-runner/tsconfig.browser.test.json",

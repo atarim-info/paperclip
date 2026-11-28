@@ -28,6 +28,7 @@ type ToolCatalogEntry = {
   name: string;
   riskLevel?: string | null;
   status?: string | null;
+  schemaHash?: string | null;
 };
 type FixtureInstall = {
   connections: ToolConnection[];
@@ -387,6 +388,13 @@ export const defineSmokeLabSuite = (label: string, scenarios: SmokeLabScenario[]
             await page.goto(`/${seed.prefix}/activity?action=tool_`);
             return "Non-HTTP path records governance/quarantine evidence through fixture metadata.";
           }
+          const targetToolName = scenario.lifecycle.schemaChangeQuarantine.parameters.toolName;
+          const baseline = await json<{ catalog: ToolCatalogEntry[] }>(
+            await request.post(`/api/tool-connections/${connection.id}/catalog/refresh`),
+          );
+          const before = baseline.catalog.find((entry) => entry.toolName === targetToolName);
+          expect(before?.status).toBe("active");
+          expect(before?.schemaHash).toBeTruthy();
           await json<ToolConnection>(await request.patch(`/api/tool-connections/${connection.id}`, {
             data: { config: { ...(connection.config ?? {}), quarantineNewEntries: true } },
           }));
@@ -399,9 +407,13 @@ export const defineSmokeLabSuite = (label: string, scenarios: SmokeLabScenario[]
           const flipped = await testCall(request, connection.id, scout, scenario.lifecycle.schemaChangeQuarantine);
           expect(flipped.decision).toBe("allowed");
           expect(flipped.error).toBeUndefined();
-          const refresh = await json<{ quarantinedCount: number }>(
+          const refresh = await json<{ catalog: ToolCatalogEntry[]; quarantinedCount: number }>(
             await request.post(`/api/tool-connections/${connection.id}/catalog/refresh`),
           );
+          const after = refresh.catalog.find((entry) => entry.toolName === targetToolName);
+          expect(after?.schemaHash).toBeTruthy();
+          expect(after?.schemaHash).not.toBe(before?.schemaHash);
+          expect(after?.status).toBe("quarantined");
           expect(refresh.quarantinedCount).toBeGreaterThan(0);
           await page.goto(`/${seed.prefix}/apps/connections`);
           return `Catalog refresh quarantined ${refresh.quarantinedCount} changed entries.`;

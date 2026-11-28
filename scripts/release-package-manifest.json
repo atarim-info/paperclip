@@ -47,17 +47,17 @@
   {
     "dir": "packages/adapters/crush-local",
     "name": "@paperclipai/adapter-crush-local",
-    "publishFromCi": true
+    "publishFromCi": false
   },
   {
     "dir": "packages/adapters/kilocode-local",
     "name": "@paperclipai/adapter-kilocode-local",
-    "publishFromCi": true
+    "publishFromCi": false
   },
   {
     "dir": "packages/adapters/mimo-local",
     "name": "@paperclipai/adapter-mimo-local",
-    "publishFromCi": true
+    "publishFromCi": false
   },
   {
     "dir": "packages/adapters/kimi-local",
@@ -188,5 +188,10 @@
     "dir": "ui",
     "name": "@paperclipai/ui",
     "publishFromCi": true
+  },
+  {
+    "dir": "packages/adapters/freebuff-local",
+    "name": "@paperclipai/adapter-freebuff-local",
+    "publishFromCi": false
   }
 ]

@@ -1,14 +1,6 @@
 ---
 name: code-review-guardian
-description: >
-  Company-wide post-code-review and post-merge procedures for Paperclip agents.
-  Use when a code review verdict lands on a pull request (approved or rejected),
-  when review rejects must be routed back to a blocked task, when releasing a
-  review block and handing work back to the responsible agent, when asking the
-  board to approve a PR, or when a PR is merged (checkout main and open a
-  graphify update task for the dedicated Graphify agent). Triggers: code review
-  done, review rejected, fix rejects, release block, approve PR, PR merged,
-  graphify update after merge.
+description: Use when a Paperclip agent receives an approved or rejected PR review, routes requested changes or releases a review blocker, requests board approval, or confirms a PR merge and its Graphify follow-up.
 ---
 
 # Code Review Guardian

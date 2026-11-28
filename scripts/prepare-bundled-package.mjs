@@ -6,6 +6,8 @@ import { createRequire } from "node:module";
 import { basename, dirname, isAbsolute, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { unpublishedAdapterDirs } from "./release-package-map.mjs";
+
 const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const nativeTargets = ["linux-x64", "darwin-arm64", "darwin-x64"];
 
@@ -374,6 +376,47 @@ export function applyBundledDependencyPatches(destinationDir, bundledDependencie
   }
 }
 
+function checkPrivateAdapterFiles(path, adapterName) {
+  const stat = lstatSync(path);
+  if (stat.isDirectory()) {
+    for (const entry of readdirSync(path)) checkPrivateAdapterFiles(resolve(path, entry), adapterName);
+  } else if (!stat.isFile()) {
+    throw new Error(`Private adapter ${adapterName} build contains an unsupported file: ${path}`);
+  }
+}
+
+// The server declares the dependencies shared by the staged adapters.
+export function stageUnpublishedAdapter(destinationDir, publishManifest, adapterName, { sourceRoot = repoRoot } = {}) {
+  if (!Object.hasOwn(unpublishedAdapterDirs, adapterName) ||
+      !publishManifest.bundleDependencies?.includes(adapterName) ||
+      publishManifest.dependencies?.[adapterName] !== publishManifest.version) {
+    throw new Error(`Private adapter ${adapterName} bundle must match the parent release version`);
+  }
+  const source = resolve(sourceRoot, unpublishedAdapterDirs[adapterName]);
+  const pkg = JSON.parse(readFileSync(resolve(source, "package.json"), "utf8"));
+  if (pkg.name !== adapterName || !existsSync(resolve(source, "dist/index.js")) ||
+      !existsSync(resolve(source, "dist/server/index.js"))) {
+    throw new Error(`Private adapter ${adapterName} build is missing or has the wrong identity`);
+  }
+  const staged = materializePublishManifest({ ...pkg, version: publishManifest.version });
+  for (const section of ["dependencies", "optionalDependencies", "peerDependencies"]) {
+    for (const [name, specifier] of Object.entries(staged[section] ?? {})) {
+      if (publishManifest[section]?.[name] !== specifier) {
+        throw new Error(`Private adapter ${adapterName} dependency ${name} must match the server`);
+      }
+    }
+  }
+
+  const files = ["dist"];
+  if (pkg.files?.includes("skills") && readdirSync(source).includes("skills")) files.push("skills");
+  for (const file of files) checkPrivateAdapterFiles(resolve(source, file), adapterName);
+  const destination = resolve(destinationDir, "node_modules", adapterName);
+  mkdirSync(destination, { recursive: true });
+  for (const file of files) cpSync(resolve(source, file), resolve(destination, file), { recursive: true });
+  delete staged.devDependencies;
+  writeFileSync(resolve(destination, "package.json"), `${JSON.stringify(staged, null, 2)}\n`);
+}
+
 export function prepareBundledPackage(sourceDir, destinationDir, { sourceRoot = repoRoot } = {}) {
   const sourcePackagePath = resolve(sourceDir, "package.json");
   const sourcePackage = JSON.parse(readFileSync(sourcePackagePath, "utf8"));
@@ -401,6 +444,11 @@ export function prepareBundledPackage(sourceDir, destinationDir, { sourceRoot = 
   const { installManifest, profiles } = configureBundledProviderOverrides(
     createBundledInstallManifest(publishManifest, bundledDependencies), bundledDependencies, rootPackage, profileData,
   );
+  const unpublishedAdapters = bundledDependencies.filter(name => Object.hasOwn(unpublishedAdapterDirs, name));
+  if (unpublishedAdapters.length > 0) {
+    for (const name of unpublishedAdapters) delete installManifest.dependencies?.[name];
+    installManifest.bundleDependencies = bundledDependencies.filter(name => !Object.hasOwn(unpublishedAdapterDirs, name));
+  }
   writeFileSync(deployedPackagePath, `${JSON.stringify(installManifest, null, 2)}\n`);
 
   execFileSync(
@@ -409,6 +457,7 @@ export function prepareBundledPackage(sourceDir, destinationDir, { sourceRoot = 
     { cwd: destinationDir, stdio: "inherit" },
   );
   writeFileSync(deployedPackagePath, `${JSON.stringify(publishManifest, null, 2)}\n`);
+  for (const name of unpublishedAdapters) stageUnpublishedAdapter(destinationDir, publishManifest, name, { sourceRoot });
   applyBundledDependencyPatches(destinationDir, bundledDependencies, sourceRoot);
   if (profiles.length) writeFileSync(deployedPackagePath, `${JSON.stringify(stageBundledProviderOptionalDependencies(destinationDir, publishManifest, profiles), null, 2)}\n`);
 
