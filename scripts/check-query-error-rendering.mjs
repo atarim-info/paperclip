@@ -69,6 +69,9 @@ export const ALLOWLIST = new Set([
   "ui/src/lib/issue-chat-messages.ts:is-error-render",
   "ui/src/lib/account-scope.ts:retry-false",
   "ui/src/lib/copilot-task-model-catalog.ts:retry-false",
+  // Ownership and identity lookups must fail fast instead of retrying a denied or partial result.
+  "ui/src/components/MarkdownApprovalLink.tsx:retry-false",
+  "ui/src/context/LiveUpdatesProvider.tsx:retry-false",
 ]);
 
 /**

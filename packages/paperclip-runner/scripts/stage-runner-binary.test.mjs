@@ -16,6 +16,22 @@ const contract = { package: { name: "@paperclipai/paperclip-runner", version: "0
 const metadata = { binaryContractVersion: 2, nativeExecutionVersion: 1, harnessDriverVersion: 1,
   packageName: "@paperclipai/paperclip-runner", packageVersion: "0.0.0", prp: { name: "paperclip.runner", minimumVersion: 1, maximumVersion: 2 } };
 
+// Some distributions (uutils coreutils) ship /bin/sleep and /bin/echo as one
+// multicall binary that refuses to run under another name and has identical
+// bytes for every tool. Use a tiny wrapper script there so each fixture stays
+// a distinct, renameable executable.
+const hasMulticallCoreutils = process.platform === "linux"
+  && (await realpath("/bin/sleep")).split(path.sep).includes("coreutils");
+
+async function hostTool(name) {
+  const tool = `/bin/${name}`;
+  if (!hasMulticallCoreutils) return tool;
+  const directory = await mkdtemp(path.join(tmpdir(), "runnerd-host-tool-"));
+  const wrapper = path.join(directory, name);
+  await writeFile(wrapper, `#!/bin/sh\n# ${name}\nexec ${tool} "$@"\n`, { mode: 0o755 });
+  return wrapper;
+}
+
 test("release assembly uses the inert four-target contract and rejects unexpected selection data", async () => {
   const contract = JSON.parse(await readFile(new URL("../release-runner-targets.json", import.meta.url), "utf8"));
   assert.deepEqual(RELEASE_RUNNER_TARGETS, ["darwin-arm64", "darwin-x64", "linux-x64", "linux-arm64"]);
@@ -112,11 +128,11 @@ test("atomically publishes while the previous executable is running", { skip: pr
   const root = await mkdtemp(path.join(tmpdir(), "runnerd-stage-test-"));
   const destination = path.join(root, "paperclip-runnerd");
   await withOwnedChildren(root, async start => {
-    await stageRunnerBinary("/bin/sleep", destination);
+    await stageRunnerBinary(await hostTool("sleep"), destination);
     const previous = await stat(destination);
     const old = start(destination, ["30"]);
     await old.spawned;
-    await stageRunnerBinary("/bin/sleep", destination);
+    await stageRunnerBinary(await hostTool("sleep"), destination);
     const published = await stat(destination);
     assert.notEqual(published.ino, previous.ino);
     assert.equal(published.mode & 0o777, 0o755);
@@ -129,7 +145,10 @@ test("atomically publishes while the previous executable is running", { skip: pr
   });
 });
 
-test("a source rebuild selects fresh dev bytes while preserving release binaries and their manifest", { skip: process.platform === "win32", timeout: 15_000 }, async () => {
+// The dev-binary resolver reads the ELF header of the rebuilt fixture, so a
+// wrapper script cannot stand in for it, and multicall coreutils cannot be
+// renamed. Skip only where /bin/sleep is such a multicall binary.
+test("a source rebuild selects fresh dev bytes while preserving release binaries and their manifest", { skip: process.platform === "win32" || hasMulticallCoreutils, timeout: 15_000 }, async () => {
   const root = await mkdtemp(path.join(tmpdir(), "runnerd-stage-rebuild-"));
   const packageRoot = path.join(root, "packages", "paperclip-runner");
   const binaryRoot = path.join(packageRoot, "dist", "bin");
@@ -149,9 +168,9 @@ test("a source rebuild selects fresh dev bytes while preserving release binaries
     await mkdir(path.dirname(source), { recursive: true });
     await writeFile(source, "fn main() {}\n");
     await mkdir(path.dirname(built), { recursive: true });
-    await copyHostFixture("/bin/echo", built);
+    await copyHostFixture(await hostTool("echo"), built);
     const previousBuild = path.join(root, "previous-build");
-    await copyHostFixture("/bin/sleep", previousBuild);
+    await copyHostFixture(await hostTool("sleep"), previousBuild);
     await stageRunnerBinary(previousBuild, hostTarget);
     await stageRunnerBinary(built, path.join(binaryRoot, "paperclip-runnerd"));
     const platforms = {}, releaseBytes = new Map();
@@ -207,7 +226,7 @@ test("a second spawn error still retires the live old child and removes its fixt
   const root = await mkdtemp(path.join(tmpdir(), "runnerd-stage-spawn-failure-"));
   let old;
   await assert.rejects(withOwnedChildren(root, async start => {
-    old = start("/bin/sleep", ["30"]); await old.spawned;
+    old = start(await hostTool("sleep"), ["30"]); await old.spawned;
     const failed = start(path.join(root, "missing-executable"), []);
     await failed.spawned;
   }), { code: "ENOENT" });

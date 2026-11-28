@@ -184,6 +184,16 @@ function checkPullRequest() {
   }
 }
 
+// One-time fork bootstrap: PR #24 incorporated upstream merge a711f291,
+// whose lock adds fork workspace importers to the reviewed upstream lock.
+// Admit only those exact bytes in this repository from that lock-changing commit.
+// Subsequent lock changes still require the existing trusted writer checks.
+export function isReviewedForkBaseline({ repository, ref, defaultBranch, lockCommit, lockSha256 }) {
+  return repository === 'atarim-info/paperclip' && ref === 'refs/heads/master' && defaultBranch === 'master' &&
+    lockCommit === 'a711f291826d6154869a3a96560500b4f4883bdd' &&
+    lockSha256 === 'f75ba100b80e9e56f53509342ccb4d29f9ada1a39e3fc301d1366f1e7004ac55';
+}
+
 /**
  * On master: report the committed lockfile's SHA-256 when its last change is a GitHub-signed merge
  * of a Dependabot pull request whose head lockfile bytes come from a verified Dependabot commit.
@@ -196,6 +206,16 @@ function checkMerged() {
   const head = required('GITHUB_SHA');
   const defaultBranch = process.env.DEFAULT_BRANCH || 'master';
   const lockCommit = run('gh', ['api', `repos/${repository}/commits?sha=${head}&path=${LOCKFILE}&per_page=1`, '--jq', '.[0].sha // empty']);
+  if (repository === 'atarim-info/paperclip' && process.env.GITHUB_REF === 'refs/heads/master' &&
+      defaultBranch === 'master' && lockCommit === 'a711f291826d6154869a3a96560500b4f4883bdd') {
+    if (run('git', ['rev-parse', 'HEAD']) !== head) throw new Error('Checkout HEAD must match the triggering commit');
+    const lockSha256 = createHash('sha256').update(execFileSync('git', ['show', `HEAD:${LOCKFILE}`])).digest('hex');
+    if (isReviewedForkBaseline({ repository, ref: process.env.GITHUB_REF, defaultBranch, lockCommit, lockSha256 })) {
+      console.log('Admitting the exact reviewed fork lock baseline for the trusted master refresh.');
+      writeOutputs({ trusted_lock_sha256: lockSha256, dependabot_pr: '' });
+      return;
+    }
+  }
   const pull = lockCommit
     ? findMergedDependabotPull(JSON.parse(run('gh', ['api', `repos/${repository}/commits/${lockCommit}/pulls`])), lockCommit, defaultBranch)
     : null;

@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -9,6 +10,7 @@ import {
   findDependabotLockCommit,
   findMergedDependabotPull,
   isDependabotCommit,
+  isReviewedForkBaseline,
   isGitHubSignedCommit,
   LOCKFILES,
   PROVIDER_LOCKFILES,
@@ -373,4 +375,49 @@ test('the policy step fails when the loaded policy exits without reporting a wri
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
+});
+
+
+test('one reviewed fork baseline is admitted only on the exact fork master and original lock merge', () => {
+  const candidate = { repository: 'atarim-info/paperclip', ref: 'refs/heads/master', defaultBranch: 'master',
+    lockCommit: 'a711f291826d6154869a3a96560500b4f4883bdd',
+    lockSha256: 'f75ba100b80e9e56f53509342ccb4d29f9ada1a39e3fc301d1366f1e7004ac55' };
+  assert.equal(isReviewedForkBaseline(candidate), true);
+  for (const delta of [{ repository: 'paperclipai/paperclip' }, { ref: 'refs/heads/other' },
+    { ref: 'refs/pull/1/merge' }, { defaultBranch: 'main' },
+    { lockCommit: 'b'.repeat(40) }, { lockSha256: 'f'.repeat(64) }]) {
+    assert.equal(isReviewedForkBaseline({ ...candidate, ...delta }), false);
+  }
+});
+
+
+test('merged mode admits only the committed fork baseline and validates the event checkout', t => {
+  const bytes = execFileSync('git', ['show', 'HEAD:pnpm-lock.yaml']);
+  if (createHash('sha256').update(bytes).digest('hex') !== 'f75ba100b80e9e56f53509342ccb4d29f9ada1a39e3fc301d1366f1e7004ac55') {
+    t.skip('fixture requires the reviewed fork baseline'); return;
+  }
+  const root = mkdtempSync(path.join(tmpdir(), 'paperclip-fork-lock-bootstrap-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const bin = path.join(root, 'bin'); mkdirSync(bin);
+  const gh = path.join(bin, 'gh');
+  writeFileSync(gh, `#!/bin/sh\ncase "$*" in *"/pulls"*) echo '[]' ;; *) echo 'a711f291826d6154869a3a96560500b4f4883bdd' ;; esac\n`, { mode: 0o755 });
+  writeFileSync(path.join(root, 'pnpm-lock.yaml'), bytes);
+  const git = args => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
+  git(['init', '-q']); git(['add', 'pnpm-lock.yaml']);
+  git(['-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '-qm', 'fixture']);
+  const head = git(['rev-parse', 'HEAD']);
+  const script = path.resolve('.github/scripts/lockfile-trust.mjs');
+  const output = path.join(root, 'output');
+  const env = { ...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH}`,
+    GITHUB_REPOSITORY: 'atarim-info/paperclip', GITHUB_REF: 'refs/heads/master', GITHUB_SHA: head,
+    GITHUB_OUTPUT: output, DEFAULT_BRANCH: 'master' };
+  const run = extra => { writeFileSync(output, ''); const result = spawnSync(process.execPath, [script, 'merged'], { cwd: root, env: { ...env, ...extra }, encoding: 'utf8' });
+    return { ...result, outputFile: readFileSync(output, 'utf8') }; };
+  // The trusted identity is computed from committed bytes, not a mutable checkout.
+  writeFileSync(path.join(root, 'pnpm-lock.yaml'), 'untrusted working tree');
+  const accepted = run({}); assert.equal(accepted.status, 0, accepted.stderr);
+  assert.match(accepted.outputFile, /trusted_lock_sha256=f75ba100b80e9e56f53509342ccb4d29f9ada1a39e3fc301d1366f1e7004ac55/);
+  const otherBranch = run({ GITHUB_REF: 'refs/heads/other' });
+  assert.equal(otherBranch.status, 0, otherBranch.stderr); assert.match(otherBranch.outputFile, /trusted_lock_sha256=\n/);
+  const wrongHead = run({ GITHUB_SHA: 'b'.repeat(40) }); assert.notEqual(wrongHead.status, 0);
 });

@@ -5,6 +5,7 @@ import {
   classifyNpmViewFailure,
   collectReleasePackagesForChangedPaths,
   getBaseReleaseState,
+  isExemptFromNpmBootstrap,
 } from "./check-release-package-bootstrap.mjs";
 
 test("manifest changes without base state validate all release-enabled packages", () => {
@@ -101,4 +102,11 @@ test("base release state falls back to public packages when manifest is absent",
   assert.deepEqual([...baseReleaseState.byDir.entries()], [
     ["packages/a", { name: "@paperclipai/a", publishFromCi: true }],
   ]);
+});
+
+test("fork-only unpublished adapters skip the npm existence check", () => {
+  for (const name of ["crush", "freebuff", "kilocode", "mimo"]) {
+    assert.equal(isExemptFromNpmBootstrap(`@paperclipai/adapter-${name}-local`), true);
+  }
+  assert.equal(isExemptFromNpmBootstrap("@paperclipai/adapter-kimi-local"), false);
 });
