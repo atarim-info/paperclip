@@ -45,7 +45,7 @@ export async function refreshReportLock(root = path.resolve(import.meta.dirname,
     // The trusted lock already resolves, so admit it exactly. No correction is needed.
     await writeFile(path.join(directory, 'report-lock.patch'), '');
     await writeFile(policyPath, JSON.stringify({ inputSha256, outputSha256: inputSha256, patchSha256: sha256(''),
-      basis: 'Admitted by the trusted master lockfile refresh after a verified Dependabot lockfile merged. No correction is needed.' }, null, 2) + '\n');
+      basis: 'Admitted by the trusted master lockfile refresh after verifying lock provenance. No correction is needed.' }, null, 2) + '\n');
     return 'refreshed';
   }
   const patch = execFileSync('git', ['diff', '--no-ext-diff', '--no-textconv', '--no-color', 'HEAD', '--', 'pnpm-lock.yaml'], { cwd: root });
